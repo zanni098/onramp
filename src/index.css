@@ -1,0 +1,29 @@
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-background text-zinc-400 font-sans antialiased;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply text-white font-serif tracking-tight;
+  }
+}
+
+@layer components {
+  .glow-card {
+    @apply bg-surface rounded-3xl border border-zinc-800 shadow-glow relative overflow-hidden;
+  }
+  .glow-button {
+    @apply rounded-full bg-white text-black font-medium px-6 py-2 transition duration-200 hover:scale-[1.02] active:scale-[0.98];
+  }
+  .glow-button-secondary {
+    @apply rounded-full bg-[#1F1F1F] border border-[#333333] text-white font-medium px-6 py-2 hover:bg-zinc-800 transition;
+  }
+  .glass-input {
+    @apply bg-black/40 border border-zinc-800 text-white rounded-xl px-4 py-2 outline-none focus:border-accent focus:shadow-glow backdrop-blur-md transition;
+  }
+}
