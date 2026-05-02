@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://vortex-placeholder.supabase.co';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'placeholder_key';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://hkheayotxkyfgxjaoizj.supabase.co';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhraGVheW90eGt5Zmd4amFvaXpqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU0OTg5MjgsImV4cCI6MjA5MTA3NDkyOH0.eaMNsXuLVA6YOfaI6pO_Xt1DqgvU9j4XlvaqbiioOHI';
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
