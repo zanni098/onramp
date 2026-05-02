@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Loader, AlertCircle, Wallet, CheckCircle } from 'lucide-react';
+import { Loader, AlertCircle, Wallet } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase } from '../lib/supabase';
 
@@ -30,7 +30,7 @@ const Checkout = () => {
   const [network, setNetwork] = useState<Network>('solana');
   const [step, setStep] = useState<PaymentStep>('select');
   const [connectedWallet, setConnectedWallet] = useState<string | null>(null);
-  const [txHash, setTxHash] = useState<string | null>(null);
+  const [_txHash, setTxHash] = useState<string | null>(null);
 
   useEffect(() => {
     if (!productId) return;
