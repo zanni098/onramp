@@ -24,6 +24,127 @@
     @apply rounded-full bg-[#1F1F1F] border border-[#333333] text-white font-medium px-6 py-2 hover:bg-zinc-800 transition;
   }
   .glass-input {
-    @apply bg-black/40 border border-zinc-800 text-white rounded-xl px-4 py-2 outline-none focus:border-accent focus:shadow-glow backdrop-blur-md transition;
+    @apply bg-black/40 border border-zinc-800 text-white rounded-xl px-4 py-3 outline-none focus:border-zinc-600 backdrop-blur-md transition placeholder:text-zinc-600 text-sm;
+  }
+
+  /* Liquid glass — subtle (nav, badges, cards) */
+  .liquid-glass {
+    background: rgba(255, 255, 255, 0.04);
+    background-blend-mode: luminosity;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: none;
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.1);
+    position: relative;
+    overflow: hidden;
+  }
+  .liquid-glass::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1.4px;
+    background: linear-gradient(
+      180deg,
+      rgba(255,255,255,0.45) 0%,
+      rgba(255,255,255,0.15) 20%,
+      rgba(255,255,255,0)    40%,
+      rgba(255,255,255,0)    60%,
+      rgba(255,255,255,0.15) 80%,
+      rgba(255,255,255,0.45) 100%
+    );
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+
+  /* Liquid glass — strong (CTA buttons) */
+  .liquid-glass-strong {
+    background: rgba(255, 255, 255, 0.06);
+    background-blend-mode: luminosity;
+    backdrop-filter: blur(50px);
+    -webkit-backdrop-filter: blur(50px);
+    border: none;
+    box-shadow: 4px 4px 4px rgba(0,0,0,0.08),
+                inset 0 1px 1px rgba(255,255,255,0.18);
+    position: relative;
+    overflow: hidden;
+  }
+  .liquid-glass-strong::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1.4px;
+    background: linear-gradient(
+      180deg,
+      rgba(255,255,255,0.55) 0%,
+      rgba(255,255,255,0.2)  20%,
+      rgba(255,255,255,0)    40%,
+      rgba(255,255,255,0)    60%,
+      rgba(255,255,255,0.2)  80%,
+      rgba(255,255,255,0.55) 100%
+    );
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
   }
 }
+
+/* Page-level keyframes */
+@keyframes fade-rise {
+  from { opacity: 0; transform: translateY(24px); filter: blur(6px); }
+  to   { opacity: 1; transform: translateY(0);    filter: blur(0);   }
+}
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(28px); filter: blur(4px); }
+  to   { opacity: 1; transform: translateY(0);    filter: blur(0);   }
+}
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes float {
+  0%, 100% { transform: translateY(0px) rotate(-1deg); }
+  50%       { transform: translateY(-18px) rotate(1deg); }
+}
+@keyframes float2 {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-12px); }
+}
+@keyframes glow-pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+@keyframes scroll-x {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+@keyframes scan-line {
+  0%   { top: 0%;   opacity: 1; }
+  95%  { top: 100%; opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+@keyframes count-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+@keyframes border-glow {
+  0%, 100% { border-color: rgba(0,112,243,0.2); box-shadow: 0 0 0 rgba(0,112,243,0); }
+  50%       { border-color: rgba(0,112,243,0.6); box-shadow: 0 0 20px rgba(0,112,243,0.15); }
+}
+@keyframes pulse-ring {
+  0%   { transform: scale(1);   opacity: 0.6; }
+  100% { transform: scale(2.2); opacity: 0;   }
+}
+
+.animate-fade-rise          { animation: fade-rise 0.8s ease-out both; }
+.animate-fade-rise-d1       { animation: fade-rise 0.8s ease-out 0.15s both; }
+.animate-fade-rise-d2       { animation: fade-rise 0.8s ease-out 0.3s both; }
+.animate-fade-rise-d3       { animation: fade-rise 0.8s ease-out 0.45s both; }
+.au                         { animation: fade-up  0.7s cubic-bezier(0.16,1,0.3,1) both; }
+.ai                         { animation: fade-in  0.5s ease-out both; }
+.fl                         { animation: float    7s ease-in-out infinite; }
+.fl2                        { animation: float2   5s ease-in-out infinite; }
+.bgl                        { animation: border-glow 3s ease-in-out infinite; }
+.dot-grid {
+  background-image: radial-gradient(circle, rgba(255,255,255,0.06) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+.ticker { display: flex; animation: scroll-x 22s linear infinite; white-space: nowrap; }
