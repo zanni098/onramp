@@ -10,6 +10,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@solana/spl-token": "^0.4.13",
+    "@solana/web3.js": "^1.98.0",
+    "@supabase/supabase-js": "^2.50.0",
+    "buffer": "^6.0.3",
     "ethers": "^6.16.0",
     "lucide-react": "^1.7.0",
     "react": "^19.2.4",
