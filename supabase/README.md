@@ -104,6 +104,33 @@ DASHBOARD_ORIGINS   = https://your-dashboard.example.com,https://staging.example
 fall back to a localhost dev allowlist only — disallowed origins are
 rejected at preflight.
 
+## Auth configuration (NOT a migration — Dashboard only)
+
+These settings live in Project Settings → Authentication (or via the
+Management API `PATCH /v1/projects/{ref}/config/auth`). They're listed
+here because they are load-bearing for the signup flow and must be
+re-applied on any fresh project clone.
+
+```
+mailer_autoconfirm         = true     # no email confirmation required
+password_min_length        = 10
+password_required_characters = lower + upper + digit
+rate_limit_email_sent      = 2/hr     # (default; only matters if autoconfirm is off)
+```
+
+`mailer_autoconfirm = true` is set because the free Supabase SMTP sender
+is capped at ~2 confirmation emails per hour per project — signups were
+returning `over_email_send_rate_limit` in production. Flipping this bit
+means users log in immediately on signup (no verification email).
+
+When/before going live with real customers:
+
+1. Configure a custom SMTP provider (Resend, Postmark, SendGrid).
+2. Set `mailer_autoconfirm = false` so users have to prove control of the
+   inbox before the account becomes useful.
+3. Upgrade to a Supabase plan that includes HaveIBeenPwned leaked-password
+   protection and set `password_hibp_enabled = true`.
+
 ## Notes on PII / data exposure
 
 `webhook_deliveries.payload` is JSONB and contains `payer_address`. It is
