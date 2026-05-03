@@ -6,14 +6,17 @@ import { useAuth } from '../lib/auth';
 interface Transaction {
   id: string;
   amount_usd: number;
-  status: 'pending' | 'confirmed' | 'failed';
+  // With the new state machine, rows only land in `transactions` after
+  // on-chain confirmation. "pending" is a checkout-session state, not a
+  // transactions state. The filter reflects that.
+  status: 'confirmed' | 'failed';
   network: string;
   tx_hash: string | null;
   payer_address: string | null;
   created_at: string;
 }
 
-const STATUS_FILTERS = ['all', 'confirmed', 'pending', 'failed'];
+const STATUS_FILTERS = ['all', 'confirmed', 'failed'];
 
 const Transactions = () => {
   const { user } = useAuth();
@@ -53,9 +56,8 @@ const Transactions = () => {
           <button
             key={f}
             onClick={() => setFilter(f)}
-            className={`px-4 py-1.5 rounded-full text-sm capitalize transition ${
-              filter === f ? 'bg-accent text-white' : 'glow-button-secondary'
-            }`}
+            className={`px-4 py-1.5 rounded-full text-sm capitalize transition ${filter === f ? 'bg-accent text-white' : 'glow-button-secondary'
+              }`}
           >
             {f}
           </button>
@@ -90,11 +92,10 @@ const Transactions = () => {
                     {txn.payer_address ? `${txn.payer_address.slice(0, 6)}…${txn.payer_address.slice(-4)}` : '—'}
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`px-2 py-0.5 rounded-full text-xs ${
-                      txn.status === 'confirmed' ? 'bg-emerald-500/10 text-emerald-400' :
-                      txn.status === 'pending' ? 'bg-yellow-500/10 text-yellow-400' :
-                      'bg-red-500/10 text-red-400'
-                    }`}>{txn.status}</span>
+                    <span className={`px-2 py-0.5 rounded-full text-xs ${txn.status === 'confirmed'
+                        ? 'bg-emerald-500/10 text-emerald-400'
+                        : 'bg-red-500/10 text-red-400'
+                      }`}>{txn.status}</span>
                   </td>
                   <td className="px-6 py-4 text-zinc-500">{new Date(txn.created_at).toLocaleDateString()}</td>
                   <td className="px-6 py-4">

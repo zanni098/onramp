@@ -7,7 +7,11 @@ interface Stats {
   totalRevenue: number;
   totalTransactions: number;
   totalProducts: number;
-  pendingTransactions: number;
+  // In-flight checkout sessions (awaiting_payment + confirming). Replaces
+  // the old "pending transactions" count, which was always 0 after the
+  // state-machine refactor because rows only land in `transactions` once
+  // the payment is fully confirmed.
+  activeCheckouts: number;
 }
 
 const Dashboard = () => {
@@ -20,9 +24,14 @@ const Dashboard = () => {
     if (!user) return;
 
     const fetchStats = async () => {
-      const [txnRes, productRes] = await Promise.all([
+      const [txnRes, productRes, activeRes] = await Promise.all([
         supabase.from('transactions').select('amount_usd, status').eq('merchant_id', user.id),
         supabase.from('products').select('id').eq('merchant_id', user.id),
+        supabase
+          .from('checkout_sessions')
+          .select('id', { count: 'exact', head: true })
+          .eq('merchant_id', user.id)
+          .in('status', ['awaiting_payment', 'confirming']),
       ]);
 
       const txns = txnRes.data ?? [];
@@ -33,7 +42,7 @@ const Dashboard = () => {
         totalRevenue: confirmed.reduce((sum, t) => sum + (t.amount_usd ?? 0), 0),
         totalTransactions: txns.length,
         totalProducts: products.length,
-        pendingTransactions: txns.filter(t => t.status === 'pending').length,
+        activeCheckouts: activeRes.count ?? 0,
       });
 
       const { data: recent } = await supabase
@@ -59,7 +68,7 @@ const Dashboard = () => {
     { label: 'Total Revenue', value: `$${stats?.totalRevenue.toFixed(2) ?? '0.00'}`, icon: <DollarSign size={20} />, color: 'text-accent' },
     { label: 'Transactions', value: stats?.totalTransactions ?? 0, icon: <Activity size={20} />, color: 'text-emerald-400' },
     { label: 'Products', value: stats?.totalProducts ?? 0, icon: <Package size={20} />, color: 'text-purple-400' },
-    { label: 'Pending', value: stats?.pendingTransactions ?? 0, icon: <TrendingUp size={20} />, color: 'text-yellow-400' },
+    { label: 'Active Checkouts', value: stats?.activeCheckouts ?? 0, icon: <TrendingUp size={20} />, color: 'text-yellow-400' },
   ];
 
   return (
@@ -99,11 +108,10 @@ const Dashboard = () => {
                   <td className="py-3">${txn.amount_usd?.toFixed(2)}</td>
                   <td className="py-3 capitalize">{txn.network}</td>
                   <td className="py-3">
-                    <span className={`px-2 py-0.5 rounded-full text-xs ${
-                      txn.status === 'confirmed' ? 'bg-emerald-500/10 text-emerald-400' :
+                    <span className={`px-2 py-0.5 rounded-full text-xs ${txn.status === 'confirmed' ? 'bg-emerald-500/10 text-emerald-400' :
                       txn.status === 'pending' ? 'bg-yellow-500/10 text-yellow-400' :
-                      'bg-red-500/10 text-red-400'
-                    }`}>{txn.status}</span>
+                        'bg-red-500/10 text-red-400'
+                      }`}>{txn.status}</span>
                   </td>
                   <td className="py-3 text-zinc-500">{new Date(txn.created_at).toLocaleDateString()}</td>
                 </tr>

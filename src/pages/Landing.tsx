@@ -6,31 +6,30 @@ import { useMobile } from '../hooks/useMobile';
 const VIDEO_URL = 'https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260314_131748_f2ca2a28-fed7-44c8-b9a9-bd9acdd5ec31.mp4';
 const FONTS = `@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@300;400;500&display=swap');`;
 
-const TXS = [
-  { amount: '250.00',   coin: 'USDC', net: 'Solana',  time: '2s ago' },
-  { amount: '1,200.00', coin: 'USDT', net: 'Polygon', time: '14s ago' },
-  { amount: '89.99',    coin: 'USDC', net: 'Solana',  time: '31s ago' },
-  { amount: '5,000.00', coin: 'USDT', net: 'Polygon', time: '1m ago' },
-  { amount: '300.00',   coin: 'USDC', net: 'Solana',  time: '2m ago' },
+const TRUST_STRIP = [
+  'Non-custodial — funds go straight to your wallet',
+  'USDC on Solana',
+  'USDT on Polygon',
+  'Webhooks with HMAC signatures',
+  'Open source',
 ];
 
 const FEATURES = [
-  { icon: <Lock size={20}/>,   title: 'Non-Custodial',      body: 'Funds land directly in your wallet. We never hold, touch, or control your money.' },
-  { icon: <Zap size={20}/>,    title: 'Instant Settlement',  body: 'Blockchain finality in seconds. No 3–5 day bank holds, no chargebacks.' },
-  { icon: <Globe size={20}/>,  title: 'No Borders',          body: 'No LLC. No ITIN. No SSN. Accept payments from any country, any client.' },
-  { icon: <Shield size={20}/>, title: 'Zero Hidden Fees',    body: 'Pay only network gas. No monthly plans, no percentage cuts, no surprises.' },
+  { icon: <Lock size={20} />, title: 'Non-Custodial', body: 'Funds land directly in your wallet. We never hold, touch, or control your money.' },
+  { icon: <Zap size={20} />, title: 'Instant Settlement', body: 'Blockchain finality in seconds. No 3–5 day bank holds, no chargebacks.' },
+  { icon: <Globe size={20} />, title: 'No Borders', body: 'No LLC. No ITIN. No SSN. Accept payments from any country, any client.' },
+  { icon: <Shield size={20} />, title: 'Zero Hidden Fees', body: 'Pay only network gas. No monthly plans, no percentage cuts, no surprises.' },
 ];
 
 const STEPS = [
-  { n: '01', title: 'Create a Product',   body: 'Add a product name, description, and price in USD from your dashboard.' },
-  { n: '02', title: 'Share Your Link',    body: 'Copy the checkout link and send it to your client — email, WhatsApp, anywhere.' },
+  { n: '01', title: 'Create a Product', body: 'Add a product name, description, and price in USD from your dashboard.' },
+  { n: '02', title: 'Share Your Link', body: 'Copy the checkout link and send it to your client — email, WhatsApp, anywhere.' },
   { n: '03', title: 'Get Paid On-Chain', body: 'Client connects their wallet and pays in USDC or USDT. Hits your wallet in seconds.' },
 ];
 
 export default function Landing() {
-  const [scrolled,    setScrolled]    = useState(false);
-  const [menuOpen,    setMenuOpen]    = useState(false);
-  void useState(0); // txIdx unused but keep ticker cycling
+  const [scrolled, setScrolled] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const isMobile = useMobile();
 
   useEffect(() => {
@@ -61,25 +60,25 @@ export default function Landing() {
             transition: 'background 0.3s',
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ width: 26, height: 26, borderRadius: '50%', background: 'linear-gradient(135deg,#0070F3,#7c3aed)', flexShrink: 0 }}/>
+              <div style={{ width: 26, height: 26, borderRadius: '50%', background: 'linear-gradient(135deg,#0070F3,#7c3aed)', flexShrink: 0 }} />
               <span style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.03em', color: '#fff' }}>onramp</span>
             </div>
             <div style={{ display: 'flex', gap: 32, alignItems: 'center' }}>
-              {[['How it works','#how-it-works'],['Networks','#networks'],['Pricing','#pricing']].map(([l,h]) => (
+              {[['How it works', '#how-it-works'], ['Networks', '#networks'], ['Pricing', '#pricing']].map(([l, h]) => (
                 <a key={l} href={h} style={{ color: 'rgba(255,255,255,0.55)', fontSize: 14, fontWeight: 500, textDecoration: 'none', transition: 'color 0.2s' }}
-                  onMouseEnter={e=>(e.currentTarget.style.color='#fff')}
-                  onMouseLeave={e=>(e.currentTarget.style.color='rgba(255,255,255,0.55)')}
+                  onMouseEnter={e => (e.currentTarget.style.color = '#fff')}
+                  onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.55)')}
                 >{l}</a>
               ))}
             </div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               <Link to="/login" style={{ padding: '8px 18px', borderRadius: 9999, fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.65)', textDecoration: 'none', border: '1px solid rgba(255,255,255,0.1)', transition: 'all 0.2s' }}
-                onMouseEnter={e=>{ e.currentTarget.style.color='#fff'; e.currentTarget.style.borderColor='rgba(255,255,255,0.3)'; }}
-                onMouseLeave={e=>{ e.currentTarget.style.color='rgba(255,255,255,0.65)'; e.currentTarget.style.borderColor='rgba(255,255,255,0.1)'; }}
+                onMouseEnter={e => { e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.3)'; }}
+                onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.65)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; }}
               >Log in</Link>
               <Link to="/register" className="liquid-glass-strong" style={{ padding: '8px 18px', borderRadius: 9999, fontSize: 13, fontWeight: 700, color: '#fff', textDecoration: 'none', transition: 'all 0.2s' }}
-                onMouseEnter={e=>(e.currentTarget.style.transform='scale(1.04)')}
-                onMouseLeave={e=>(e.currentTarget.style.transform='scale(1)')}
+                onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.04)')}
+                onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
               >Get Started</Link>
             </div>
           </div>
@@ -96,11 +95,11 @@ export default function Landing() {
             transition: 'background 0.3s',
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'linear-gradient(135deg,#0070F3,#7c3aed)' }}/>
+              <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'linear-gradient(135deg,#0070F3,#7c3aed)' }} />
               <span style={{ fontSize: 17, fontWeight: 700, color: '#fff' }}>onramp</span>
             </div>
             <button onClick={() => setMenuOpen(v => !v)} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: 4 }}>
-              {menuOpen ? <X size={22}/> : <Menu size={22}/>}
+              {menuOpen ? <X size={22} /> : <Menu size={22} />}
             </button>
           </div>
         )}
@@ -113,7 +112,7 @@ export default function Landing() {
             padding: '16px 20px 28px',
             display: 'flex', flexDirection: 'column', gap: 4,
           }}>
-            {[['How it works','#how-it-works'],['Networks','#networks'],['Pricing','#pricing']].map(([l,h]) => (
+            {[['How it works', '#how-it-works'], ['Networks', '#networks'], ['Pricing', '#pricing']].map(([l, h]) => (
               <a key={l} href={h} onClick={closeMenu} style={{
                 color: 'rgba(255,255,255,0.7)', fontSize: 16, fontWeight: 500,
                 textDecoration: 'none', padding: '12px 4px',
@@ -142,8 +141,8 @@ export default function Landing() {
           style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 0 }}
           src={VIDEO_URL}
         />
-        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 1 }}/>
-        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 200, background: 'linear-gradient(to bottom, transparent, #000)', zIndex: 2, pointerEvents: 'none' }}/>
+        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 1 }} />
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 200, background: 'linear-gradient(to bottom, transparent, #000)', zIndex: 2, pointerEvents: 'none' }} />
 
         <div style={{
           position: 'relative', zIndex: 3,
@@ -168,8 +167,8 @@ export default function Landing() {
             fontWeight: 400, lineHeight: 0.97, letterSpacing: '-0.03em',
             maxWidth: isMobile ? '100%' : 900, marginBottom: 24, color: '#fff',
           }}>
-            Get Paid.<br/>
-            <em style={{ fontStyle: 'italic', color: 'rgba(255,255,255,0.38)' }}>No Borders.</em><br/>
+            Get Paid.<br />
+            <em style={{ fontStyle: 'italic', color: 'rgba(255,255,255,0.38)' }}>No Borders.</em><br />
             No Permission.
           </h1>
 
@@ -193,12 +192,12 @@ export default function Landing() {
               textDecoration: 'none', transition: 'all 0.25s',
               width: isMobile ? '100%' : 'auto',
             }}
-              onMouseEnter={e=>{ e.currentTarget.style.transform='scale(1.03)'; e.currentTarget.style.boxShadow='0 0 28px rgba(255,255,255,0.2)'; }}
-              onMouseLeave={e=>{ e.currentTarget.style.transform='scale(1)'; e.currentTarget.style.boxShadow='none'; }}
+              onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.03)'; e.currentTarget.style.boxShadow = '0 0 28px rgba(255,255,255,0.2)'; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = 'none'; }}
             >
               Start Accepting Payments
               <span style={{ width: 36, height: 36, borderRadius: '50%', background: '#0070F3', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <ArrowRight size={16} color="#fff"/>
+                <ArrowRight size={16} color="#fff" />
               </span>
             </Link>
             <a href="#how-it-works" className="liquid-glass-strong" style={{
@@ -208,8 +207,8 @@ export default function Landing() {
               textDecoration: 'none', transition: 'color 0.2s',
               width: isMobile ? '100%' : 'auto',
             }}
-              onMouseEnter={e=>(e.currentTarget.style.color='#fff')}
-              onMouseLeave={e=>(e.currentTarget.style.color='rgba(255,255,255,0.75)')}
+              onMouseEnter={e => (e.currentTarget.style.color = '#fff')}
+              onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.75)')}
             >See how it works</a>
           </div>
 
@@ -222,7 +221,7 @@ export default function Landing() {
             borderRadius: 20, animationDelay: '0.55s',
             width: isMobile ? '100%' : 'auto',
           }}>
-            {[['0%','Platform fees'],['<3s','Settlement'],['2','Networks'],['∞','Countries']].map(([v,l]) => (
+            {[['0%', 'Platform fees'], ['<3s', 'Settlement'], ['2', 'Networks'], ['∞', 'Countries']].map(([v, l]) => (
               <div key={l} style={{ textAlign: 'center' }}>
                 <div style={{ fontFamily: "'DM Mono', monospace", fontSize: isMobile ? 20 : 22, fontWeight: 500, color: '#fff', lineHeight: 1 }}>{v}</div>
                 <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 4, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{l}</div>
@@ -232,21 +231,23 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ── TICKER ── */}
+      {/* ── TRUST STRIP ── */}
+      {/* Previously a ticker of fake transactions with invented "Xs ago"
+          timestamps. Replaced with a static, factual capability strip so
+          nothing on the page claims traffic that hasn't happened yet. */}
       <div style={{
-        background: 'rgba(0,112,243,0.06)',
-        borderTop: '1px solid rgba(0,112,243,0.15)',
-        borderBottom: '1px solid rgba(0,112,243,0.15)',
+        background: 'rgba(0,112,243,0.04)',
+        borderTop: '1px solid rgba(0,112,243,0.12)',
+        borderBottom: '1px solid rgba(0,112,243,0.12)',
         padding: '14px 0', overflow: 'hidden',
       }}>
         <div className="ticker">
           {[...Array(2)].map((_, r) => (
             <div key={r} style={{ display: 'flex', gap: 48, paddingRight: 48 }}>
-              {TXS.concat(TXS).map((t, i) => (
-                <span key={i} style={{ fontFamily: "'DM Mono', monospace", fontSize: 13, color: 'rgba(255,255,255,0.45)', display: 'flex', alignItems: 'center', gap: 10, whiteSpace: 'nowrap' }}>
-                  <CheckCircle size={12} color="#4ade80"/>
-                  <span style={{ color: '#fff', fontWeight: 500 }}>{t.amount} {t.coin}</span>
-                  via {t.net}
+              {TRUST_STRIP.concat(TRUST_STRIP).map((t, i) => (
+                <span key={i} style={{ fontFamily: "'DM Mono', monospace", fontSize: 12, color: 'rgba(255,255,255,0.55)', display: 'flex', alignItems: 'center', gap: 10, whiteSpace: 'nowrap', letterSpacing: '0.02em' }}>
+                  <CheckCircle size={12} color="#4ade80" />
+                  <span>{t}</span>
                 </span>
               ))}
             </div>
@@ -269,7 +270,7 @@ export default function Landing() {
               fontSize: isMobile ? 34 : 'clamp(30px, 3.5vw, 52px)', fontWeight: 400,
               letterSpacing: '-0.02em', lineHeight: 1.05, marginBottom: 16, color: '#fff',
             }}>
-              Stripe doesn't serve<br/>
+              Stripe doesn't serve<br />
               <span style={{ color: 'rgba(255,255,255,0.3)' }}>70% of the world.</span>
             </h2>
             <p style={{ fontSize: 15, lineHeight: 1.75, color: 'rgba(255,255,255,0.5)' }}>
@@ -309,11 +310,11 @@ export default function Landing() {
               borderRadius: 20, padding: isMobile ? '28px 24px' : '36px 32px',
               position: 'relative', overflow: 'hidden', transition: 'border-color 0.3s, transform 0.3s',
             }}
-              onMouseEnter={e=>{ e.currentTarget.style.borderColor='rgba(0,112,243,0.4)'; e.currentTarget.style.transform='translateY(-4px)'; }}
-              onMouseLeave={e=>{ e.currentTarget.style.borderColor='rgba(255,255,255,0.07)'; e.currentTarget.style.transform='translateY(0)'; }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(0,112,243,0.4)'; e.currentTarget.style.transform = 'translateY(-4px)'; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)'; e.currentTarget.style.transform = 'translateY(0)'; }}
             >
               <div style={{ position: 'absolute', top: -10, right: 16, fontFamily: "'DM Mono', monospace", fontSize: 80, fontWeight: 700, color: 'rgba(255,255,255,0.04)', lineHeight: 1, pointerEvents: 'none' }}>{s.n}</div>
-              <div style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(0,112,243,0.1)', border: '1px solid rgba(0,112,243,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 18, fontFamily: "'DM Mono', monospace", fontSize: 14, color: '#60a5fa', fontWeight: 500 }}>{String(i+1).padStart(2,'0')}</div>
+              <div style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(0,112,243,0.1)', border: '1px solid rgba(0,112,243,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 18, fontFamily: "'DM Mono', monospace", fontSize: 14, color: '#60a5fa', fontWeight: 500 }}>{String(i + 1).padStart(2, '0')}</div>
               <h3 style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 8, color: '#fff' }}>{s.title}</h3>
               <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)', lineHeight: 1.7 }}>{s.body}</p>
             </div>
@@ -324,9 +325,9 @@ export default function Landing() {
             display: 'inline-flex', alignItems: 'center', gap: 8, padding: '13px 28px', borderRadius: 9999,
             background: '#fff', color: '#000', fontWeight: 700, fontSize: 15, textDecoration: 'none', transition: 'all 0.2s',
           }}
-            onMouseEnter={e=>{ e.currentTarget.style.transform='scale(1.04)'; e.currentTarget.style.boxShadow='0 0 24px rgba(255,255,255,0.18)'; }}
-            onMouseLeave={e=>{ e.currentTarget.style.transform='scale(1)'; e.currentTarget.style.boxShadow='none'; }}
-          >Try it free <ArrowRight size={15}/></Link>
+            onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.04)'; e.currentTarget.style.boxShadow = '0 0 24px rgba(255,255,255,0.18)'; }}
+            onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = 'none'; }}
+          >Try it free <ArrowRight size={15} /></Link>
         </div>
       </section>
 
@@ -342,8 +343,8 @@ export default function Landing() {
               borderRadius: 18, padding: isMobile ? '24px' : '30px', display: 'flex', gap: 16,
               transition: 'border-color 0.3s, background 0.3s',
             }}
-              onMouseEnter={e=>{ e.currentTarget.style.borderColor='rgba(0,112,243,0.3)'; e.currentTarget.style.background='rgba(0,112,243,0.04)'; }}
-              onMouseLeave={e=>{ e.currentTarget.style.borderColor='rgba(255,255,255,0.07)'; e.currentTarget.style.background='rgba(255,255,255,0.02)'; }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(0,112,243,0.3)'; e.currentTarget.style.background = 'rgba(0,112,243,0.04)'; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)'; e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; }}
             >
               <div style={{ width: 42, height: 42, borderRadius: 12, flexShrink: 0, background: 'rgba(0,112,243,0.1)', border: '1px solid rgba(0,112,243,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#60a5fa' }}>{f.icon}</div>
               <div>
@@ -383,9 +384,9 @@ export default function Landing() {
             <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: '#60a5fa', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 14 }}>Free forever</div>
             <div style={{ fontFamily: "'Instrument Serif', serif", fontStyle: 'italic', fontSize: 68, fontWeight: 400, color: '#fff', lineHeight: 1 }}>$0</div>
             <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', marginBottom: 32, marginTop: 8 }}>No monthly fees. No percentage cut. Pay only network gas.</div>
-            {['Unlimited products','Unlimited transactions','Solana USDC + Polygon USDT','Webhook notifications','Dashboard & analytics','API access'].map(f => (
+            {['Unlimited products', 'Unlimited transactions', 'Solana USDC + Polygon USDT', 'Signed webhook notifications', 'Dashboard with transaction history'].map(f => (
               <div key={f} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, textAlign: 'left' }}>
-                <CheckCircle size={15} color="#4ade80"/>
+                <CheckCircle size={15} color="#4ade80" />
                 <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.65)' }}>{f}</span>
               </div>
             ))}
@@ -395,9 +396,9 @@ export default function Landing() {
               background: '#fff', color: '#000', fontWeight: 700, fontSize: 15,
               textDecoration: 'none', transition: 'all 0.2s',
             }}
-              onMouseEnter={e=>{ e.currentTarget.style.transform='scale(1.03)'; e.currentTarget.style.boxShadow='0 0 24px rgba(255,255,255,0.18)'; }}
-              onMouseLeave={e=>{ e.currentTarget.style.transform='scale(1)'; e.currentTarget.style.boxShadow='none'; }}
-            >Get started free <ArrowRight size={15}/></Link>
+              onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.03)'; e.currentTarget.style.boxShadow = '0 0 24px rgba(255,255,255,0.18)'; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = 'none'; }}
+            >Get started free <ArrowRight size={15} /></Link>
           </div>
         </div>
       </section>
@@ -410,14 +411,14 @@ export default function Landing() {
           padding: isMobile ? '48px 28px' : '80px 60px',
           textAlign: 'center', position: 'relative', overflow: 'hidden',
         }}>
-          <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 400, height: 200, background: 'radial-gradient(ellipse, rgba(0,112,243,0.12), transparent)', filter: 'blur(40px)', pointerEvents: 'none' }}/>
+          <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 400, height: 200, background: 'radial-gradient(ellipse, rgba(0,112,243,0.12), transparent)', filter: 'blur(40px)', pointerEvents: 'none' }} />
           <div style={{ position: 'relative', zIndex: 1 }}>
             <h2 style={{
               fontFamily: "'Instrument Serif', serif", fontStyle: 'italic',
               fontSize: isMobile ? 36 : 'clamp(32px, 4vw, 60px)', fontWeight: 400,
               letterSpacing: '-0.03em', lineHeight: 1.05, marginBottom: 16, color: '#fff',
             }}>
-              Your wallet is the bank.<br/>
+              Your wallet is the bank.<br />
               <span style={{ color: 'rgba(255,255,255,0.35)' }}>Start using it.</span>
             </h2>
             <p style={{ fontSize: isMobile ? 15 : 17, color: 'rgba(255,255,255,0.5)', marginBottom: 36, maxWidth: 400, margin: '0 auto 36px' }}>Set up in under 5 minutes. No approval process. No borders.</p>
@@ -427,12 +428,12 @@ export default function Landing() {
               background: '#fff', color: '#000', fontWeight: 700, fontSize: isMobile ? 15 : 17,
               textDecoration: 'none', transition: 'all 0.25s',
             }}
-              onMouseEnter={e=>{ e.currentTarget.style.transform='scale(1.04)'; e.currentTarget.style.boxShadow='0 0 36px rgba(255,255,255,0.22)'; }}
-              onMouseLeave={e=>{ e.currentTarget.style.transform='scale(1)'; e.currentTarget.style.boxShadow='none'; }}
+              onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.04)'; e.currentTarget.style.boxShadow = '0 0 36px rgba(255,255,255,0.22)'; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = 'none'; }}
             >
               Create Free Account
               <span style={{ width: 38, height: 38, borderRadius: '50%', background: '#0070F3', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <ArrowRight size={17} color="#fff"/>
+                <ArrowRight size={17} color="#fff" />
               </span>
             </Link>
           </div>
@@ -449,17 +450,19 @@ export default function Landing() {
         maxWidth: 1100, margin: '0 auto',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'linear-gradient(135deg, #0070F3, #7c3aed)' }}/>
+          <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'linear-gradient(135deg, #0070F3, #7c3aed)' }} />
           <span style={{ fontWeight: 700, fontSize: 15, color: '#fff' }}>onramp</span>
         </div>
         <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: 'rgba(255,255,255,0.2)' }}>Non-custodial · No borders · Open source</span>
         <div style={{ display: 'flex', gap: 20 }}>
-          {['Privacy','Terms','GitHub'].map(l => (
-            <a key={l} href="#" style={{ fontSize: 13, color: 'rgba(255,255,255,0.3)', textDecoration: 'none', transition: 'color 0.2s' }}
-              onMouseEnter={e=>(e.currentTarget.style.color='rgba(255,255,255,0.7)')}
-              onMouseLeave={e=>(e.currentTarget.style.color='rgba(255,255,255,0.3)')}
-            >{l}</a>
-          ))}
+          <a
+            href="https://github.com/zanni098/onramp"
+            target="_blank"
+            rel="noreferrer"
+            style={{ fontSize: 13, color: 'rgba(255,255,255,0.3)', textDecoration: 'none', transition: 'color 0.2s' }}
+            onMouseEnter={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.7)')}
+            onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.3)')}
+          >GitHub</a>
         </div>
       </footer>
     </div>
