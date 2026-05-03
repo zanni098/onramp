@@ -8,9 +8,10 @@ export interface MerchantProfile {
   solana_wallet: string | null;
   polygon_wallet: string | null;
   webhook_url: string | null;
-  webhook_secret: string | null;
   public_key: string | null;
-  secret_key: string | null;
+  // NOTE: webhook_secret and secret_key are NOT loaded into the browser.
+  // They live in merchant_secrets (service-role only) and are fetched
+  // on demand via the get-merchant-secrets / rotate-* Edge Functions.
 }
 
 interface AuthContextType {
@@ -27,8 +28,8 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   profile: null,
   loading: true,
-  signOut: async () => {},
-  refreshProfile: async () => {},
+  signOut: async () => { },
+  refreshProfile: async () => { },
 });
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -38,12 +39,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   const fetchProfile = async (userId: string) => {
+    // Explicit column list — never SELECT * on a table that may grow secret
+    // columns. If a future migration accidentally re-adds a sensitive field,
+    // it stays out of the browser by default.
     const { data } = await supabase
       .from('profiles')
-      .select('*')
+      .select(
+        'id, business_name, solana_wallet, polygon_wallet, webhook_url, public_key',
+      )
       .eq('id', userId)
       .single();
-    setProfile(data ?? null);
+    setProfile((data as MerchantProfile) ?? null);
   };
 
   const refreshProfile = async () => {

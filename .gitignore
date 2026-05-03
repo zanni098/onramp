@@ -17,6 +17,15 @@ dist-ssr
 .env.local
 .env.production
 .env.*.local
+.env.deploy
+
+# Supabase CLI workspace
+.supabase/
+supabase/.temp/
+supabase/.branches/
+
+# Deploy tooling
+/.tools/
 
 # Editor directories and files
 .vscode/*
