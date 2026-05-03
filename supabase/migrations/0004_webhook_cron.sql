@@ -2,15 +2,15 @@
 -- Schedule the webhook-dispatcher Edge Function to run every 10 seconds via
 -- pg_cron + pg_net. Also includes verifier catch-up (the dispatcher does both).
 --
--- Prereqs (Supabase usually has these enabled by default on hosted projects):
---   create extension if not exists pg_cron;
---   create extension if not exists pg_net;
---
 -- The dispatcher endpoint is anon-callable — it does service-role work
 -- internally — but we still pass the anon key as a Bearer for completeness.
--- Replace the placeholder values with your project's URL + anon key, OR set
--- them via Supabase vault and read them in. For first deploy, the simplest
--- path is to paste them directly into pg_cron's command.
+
+-- Enable prerequisites. These live in the `extensions` schema on Supabase
+-- so the CLI migrations runner can create them without elevated privileges.
+-- pg_cron installs itself in its own `cron` schema (not relocatable);
+-- pg_net installs itself in `net`. Both are supported by Supabase.
+create extension if not exists pg_cron;
+create extension if not exists pg_net;
 
 -- We schedule via a stored procedure so the URL/secret can be rotated by
 -- updating one place rather than the cron entry.
