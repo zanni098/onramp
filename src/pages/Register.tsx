@@ -26,7 +26,13 @@ export default function Register() {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!businessName || !email || !password) return toast.error('Please fill in all fields');
-    if (password.length < 8) return toast.error('Password must be at least 8 characters');
+    // Must match the server-side policy set via the Supabase Auth config:
+    //   password_min_length = 10
+    //   password_required_characters = lower + upper + digit
+    if (password.length < 10) return toast.error('Password must be at least 10 characters');
+    if (!/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/[0-9]/.test(password)) {
+      return toast.error('Password must include upper, lower, and a digit');
+    }
     setLoading(true);
     // Profile + secrets are created server-side by the on_auth_user_created
     // trigger (migration 0007). The browser only passes business_name as
@@ -74,7 +80,7 @@ export default function Register() {
         {[
           { label: 'Business Name', type: 'text', val: businessName, set: setBusinessName, ph: 'Your company or project name' },
           { label: 'Email', type: 'email', val: email, set: setEmail, ph: 'you@example.com' },
-          { label: 'Password', type: 'password', val: password, set: setPassword, ph: '8+ characters' },
+          { label: 'Password', type: 'password', val: password, set: setPassword, ph: '10+ chars, upper + lower + digit' },
         ].map(({ label, type, val, set, ph }) => (
           <div key={label}>
             <label style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.45)', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 8 }}>{label}</label>
