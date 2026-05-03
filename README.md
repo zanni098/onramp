@@ -280,7 +280,7 @@ Frontend deploys via Vercel's GitHub integration — every push to `main` builds
 Genuinely open items (the misleading "TODO" roadmap of the previous README covered things that are already shipped — those have been removed):
 
 - [ ] **Custom SMTP provider** (Resend / Postmark / SendGrid) — currently `mailer_autoconfirm = true` so the free Supabase shared sender's 2/hr cap doesn't block signups.
-- [ ] **Helius + Alchemy keys in production Edge Function secrets** — currently using free public RPCs, which will rate-limit under real load.
+- [ ] **Solana RPC proxy Edge Function** so the browser checkout can use Helius without baking the API key into the public JS bundle. Today the dedicated Helius key is server-side only; the browser falls back to the public `mainnet-beta` RPC for blockhash + ATA lookups.
 - [ ] **Sentry (or equivalent) error + cron monitoring** — right now a stopped cron goes undetected until webhook delivery visibly backs up.
 - [ ] **Hosted iframe / embed script** so merchants can drop a checkout widget into their site without the `/checkout/:id` redirect.
 - [ ] **Mobile wallet deep-links** (Phantom / MetaMask app) on the checkout page.
