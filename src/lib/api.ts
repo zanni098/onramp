@@ -148,15 +148,18 @@ export function rotateWebhookSecret(): Promise<{ webhook_secret: string }> {
   return postFnAuthed('rotate-webhook-secret', {});
 }
 
-/** Public read of a session row by id — RLS allows anon SELECT. */
+/**
+ * Public read of a session row by id. Goes through a SECURITY DEFINER RPC
+ * (`get_checkout_session(uuid)`) so an anon caller can only fetch a session
+ * if they already know the unguessable UUID — they cannot enumerate the
+ * table. Direct anon SELECT on `checkout_sessions` was revoked in 0011.
+ */
 export async function fetchSession(sessionId: string) {
-  const { data, error } = await supabase
-    .from('checkout_sessions')
-    .select(
-      'id, status, network, token, amount_minor, reference, destination, payer_address, tx_hash, confirmed_at, failure_reason, expires_at, product_id',
-    )
-    .eq('id', sessionId)
-    .single();
+  const { data, error } = await supabase.rpc('get_checkout_session', {
+    p_id: sessionId,
+  });
   if (error) throw error;
-  return data;
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row) throw new Error('session_not_found');
+  return row;
 }

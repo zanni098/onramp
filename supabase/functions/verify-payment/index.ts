@@ -168,14 +168,14 @@ serve(async (req) => {
   }
 
   // result.status === 'confirmed'
-  // 5. Idempotent ledger insert + status flip.
+  // 5. Idempotent ledger insert.
   const { error: txInsErr } = await supabase
     .from('transactions')
     .insert({
       session_id: session.id,
       merchant_id: session.merchant_id,
       product_id: session.product_id,
-      amount_usd: Number(session.amount_minor) / 1_000_000,
+      amount_usd: Number(session.amount_minor) / 10 ** tokenDecimals(session.token),
       amount_minor: session.amount_minor,
       network: session.network,
       token_mint: session.token_mint,
@@ -189,7 +189,18 @@ serve(async (req) => {
     return json({ error: 'ledger_insert_failed', detail: txInsErr.message }, 500);
   }
 
-  // Flip session to confirmed (CAS on 'confirming' to avoid double-fire).
+  // 6. Enqueue webhook delivery BEFORE flipping the session to confirmed.
+  //    If this fails for any reason other than "merchant has no webhook URL",
+  //    we abort and leave the session in 'confirming'. The catchup verifier
+  //    on the dispatcher cron will retry the whole confirm path on the next
+  //    tick. This guarantees we never end up with a confirmed session and a
+  //    silently-dropped webhook — both happen, or neither does.
+  const enqRes = await enqueueWebhook(supabase, session, result.payerAddress, txHash);
+  if (enqRes === 'error') {
+    return json({ error: 'webhook_enqueue_failed' }, 500);
+  }
+
+  // 7. Flip session to confirmed (CAS on 'confirming' to avoid double-fire).
   const { error: confirmErr } = await supabase
     .from('checkout_sessions')
     .update({
@@ -203,9 +214,6 @@ serve(async (req) => {
   if (confirmErr) {
     return json({ error: 'confirm_failed', detail: confirmErr.message }, 500);
   }
-
-  // 6. Enqueue webhook delivery (best-effort; webhook-dispatcher cron picks up).
-  await enqueueWebhook(supabase, session, result.payerAddress, txHash);
 
   return json({
     status: 'confirmed',
@@ -229,6 +237,10 @@ async function markTerminal(
     .eq('status', fromStatus);
 }
 
+// Returns:
+//   'queued'  — row inserted, dispatcher will pick it up
+//   'no-url'  — merchant has no webhook configured (legitimate skip)
+//   'error'   — unexpected DB error; caller should NOT flip the session
 async function enqueueWebhook(
   supabase: ReturnType<typeof db>,
   session: {
@@ -242,23 +254,24 @@ async function enqueueWebhook(
   },
   payerAddress: string,
   txHash: string,
-) {
+): Promise<'queued' | 'no-url' | 'error'> {
   // Look up webhook URL for the merchant. (Secret stays in merchant_secrets;
   // dispatcher loads it at send time.)
-  const { data: profile } = await supabase
+  const { data: profile, error: profErr } = await supabase
     .from('profiles')
     .select('webhook_url')
     .eq('id', session.merchant_id)
     .single();
 
-  if (!profile?.webhook_url) return;
+  if (profErr) return 'error';
+  if (!profile?.webhook_url) return 'no-url';
 
   const payload = {
     event: 'payment.confirmed',
     session_id: session.id,
     product_id: session.product_id,
     amount_minor: session.amount_minor,
-    amount_usd: session.amount_minor / 1_000_000,
+    amount_usd: session.amount_minor / 10 ** tokenDecimals(session.token),
     currency: 'USD',
     network: session.network,
     token: session.token,
@@ -268,7 +281,19 @@ async function enqueueWebhook(
     timestamp: new Date().toISOString(),
   };
 
-  await supabase.from('webhook_deliveries').insert({
+  // Idempotency hint: a previous failed-then-retried flow could have
+  // already enqueued the same payment. We use the session_id to dedupe
+  // by checking for an existing queued/delivering/delivered row first.
+  const { data: existing } = await supabase
+    .from('webhook_deliveries')
+    .select('id')
+    .eq('merchant_id', session.merchant_id)
+    .eq('event', 'payment.confirmed')
+    .contains('payload', { session_id: session.id })
+    .limit(1);
+  if (existing && existing.length > 0) return 'queued';
+
+  const { error: insErr } = await supabase.from('webhook_deliveries').insert({
     merchant_id: session.merchant_id,
     event: 'payment.confirmed',
     payload,
@@ -276,6 +301,21 @@ async function enqueueWebhook(
     status: 'queued',
     next_attempt_at: new Date().toISOString(),
   });
+  if (insErr) return 'error';
+  return 'queued';
+}
+
+// Decimals lookup. USDC and USDT are both 6dp on the chains we support; if
+// you add a new token, extend this map. Calling with an unknown token throws
+// rather than silently returning a wrong dollar figure.
+function tokenDecimals(token: string): number {
+  switch (token) {
+    case 'USDC':
+    case 'USDT':
+      return 6;
+    default:
+      throw new Error(`unknown token: ${token}`);
+  }
 }
 
 function solanaRpcUrl(): string {

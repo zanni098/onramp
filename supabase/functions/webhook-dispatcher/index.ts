@@ -28,6 +28,10 @@ const HTTP_TIMEOUT_MS = 5_000;
 const MAX_ATTEMPTS = 12;
 const BATCH_SIZE = 25;
 const POLYGON_CONFIRMATIONS = 64;
+// Anything stuck in `delivering` longer than this means the dispatcher run
+// that claimed it crashed mid-fetch (Supabase Edge cold-kill, OOM, network
+// blip, etc.). Sweep it back to `queued` so the next tick can retry.
+const STALE_DELIVERING_AFTER_MS = 2 * 60 * 1000;
 
 const HARD_FAIL_4XX = new Set([400, 401, 403, 404, 405, 410, 411, 413, 414, 415, 422, 451]);
 
@@ -35,18 +39,48 @@ serve(async (req) => {
   const pre = preflight(req);
   if (pre) return pre;
 
+  // CRON_SECRET gate: if the env var is set, the caller must present the
+  // matching `x-cron-secret` header. The pg_cron job (defined in the
+  // database) is updated by migration 0012 to send this header. Manual
+  // invocation by a human or attacker without the secret is rejected.
+  // We fail open if the env var is unset — to keep dev / first-deploy
+  // working until the secret is rolled out.
+  const requiredSecret = Deno.env.get('CRON_SECRET');
+  if (requiredSecret) {
+    const presented = req.headers.get('x-cron-secret');
+    if (presented !== requiredSecret) {
+      return json({ error: 'forbidden' }, 403);
+    }
+  }
+
   const supabase = db();
 
-  // We allow either POST (cron) or GET (manual debug). No JWT requirements
-  // beyond the Supabase function's default (anon key suffices for invocation;
-  // the function itself does service-role work internally).
   const result = {
+    swept: await sweepStaleDelivering(supabase),
     deliveries: await drainDeliveries(supabase),
     catchup: await catchupConfirming(supabase),
   };
 
   return json(result);
 });
+
+// ---------------------------------------------------------------------------
+// Stale-row sweep: a dispatcher run that crashes after flipping `queued ->
+// delivering` but before completing the fetch leaves the row stuck. Reset
+// any such rows so the next tick's drainDeliveries can claim them again.
+// ---------------------------------------------------------------------------
+
+async function sweepStaleDelivering(supabase: ReturnType<typeof db>) {
+  const cutoff = new Date(Date.now() - STALE_DELIVERING_AFTER_MS).toISOString();
+  const { data, error } = await supabase
+    .from('webhook_deliveries')
+    .update({ status: 'queued', updated_at: new Date().toISOString() })
+    .eq('status', 'delivering')
+    .lt('updated_at', cutoff)
+    .select('id');
+  if (error) return { reset: 0, error: error.message };
+  return { reset: data?.length ?? 0 };
+}
 
 // ---------------------------------------------------------------------------
 // Webhook delivery drain
@@ -143,6 +177,13 @@ async function deliverOne(
       const resp = await fetch(d.url, {
         method: 'POST',
         signal: ac.signal,
+        // SSRF mitigation: do NOT follow redirects. The validator already
+        // blocks loopback / RFC-1918 / metadata IPs at the URL string,
+        // but a cooperating attacker could still register a public host
+        // that 302-redirects into private space. Treat redirects as
+        // delivery failures so the merchant has to fix their endpoint
+        // rather than us silently proxying into their VPC.
+        redirect: 'manual',
         headers: {
           'content-type': 'application/json',
           'user-agent': 'Onramp-Webhooks/1.0',
@@ -154,6 +195,12 @@ async function deliverOne(
         body,
       });
       statusCode = resp.status;
+      // A redirect response with redirect:'manual' arrives here as 0 (Deno)
+      // or 3xx. Treat 3xx as a hard fail so the merchant sees it and fixes
+      // their endpoint.
+      if (statusCode >= 300 && statusCode < 400) {
+        errStr = `merchant endpoint returned redirect ${statusCode}; SSRF guard rejects it`;
+      }
       // Drain body to free the connection; ignore content.
       try { await resp.text(); } catch { /* ignore */ }
     } finally {
@@ -182,6 +229,13 @@ async function deliverOne(
 
   if (statusCode != null && HARD_FAIL_4XX.has(statusCode)) {
     await markFailed(supabase, d.id, `merchant returned ${statusCode}`, statusCode);
+    return 'failed';
+  }
+
+  // 3xx responses are caught above as errStr; treat as hard fail (merchant
+  // misconfiguration, not a transient issue worth retrying).
+  if (statusCode != null && statusCode >= 300 && statusCode < 400) {
+    await markFailed(supabase, d.id, errStr ?? `merchant returned ${statusCode}`, statusCode);
     return 'failed';
   }
 
@@ -269,21 +323,21 @@ async function catchupConfirming(supabase: ReturnType<typeof db>) {
       const result =
         s.network === 'solana'
           ? await verifySolanaPayment({
-              txHash: s.tx_hash,
-              expectedDestination: s.destination,
-              expectedTokenMint: s.token_mint,
-              expectedAmountMinor: BigInt(s.amount_minor),
-              expectedReference: s.reference,
-              rpcUrl: solanaRpcUrl(),
-            })
+            txHash: s.tx_hash,
+            expectedDestination: s.destination,
+            expectedTokenMint: s.token_mint,
+            expectedAmountMinor: BigInt(s.amount_minor),
+            expectedReference: s.reference,
+            rpcUrl: solanaRpcUrl(),
+          })
           : await verifyPolygonPayment({
-              txHash: s.tx_hash,
-              expectedDestination: s.destination,
-              expectedTokenContract: s.token_mint,
-              expectedAmountMinor: BigInt(s.amount_minor),
-              confirmations: POLYGON_CONFIRMATIONS,
-              rpcUrl: polygonRpcUrl(),
-            });
+            txHash: s.tx_hash,
+            expectedDestination: s.destination,
+            expectedTokenContract: s.token_mint,
+            expectedAmountMinor: BigInt(s.amount_minor),
+            confirmations: POLYGON_CONFIRMATIONS,
+            rpcUrl: polygonRpcUrl(),
+          });
 
       if (result.status === 'confirmed') {
         // Insert ledger row idempotently.
@@ -291,7 +345,7 @@ async function catchupConfirming(supabase: ReturnType<typeof db>) {
           session_id: s.id,
           merchant_id: s.merchant_id,
           product_id: s.product_id,
-          amount_usd: Number(s.amount_minor) / 1_000_000,
+          amount_usd: Number(s.amount_minor) / 10 ** tokenDecimals(s.token),
           amount_minor: s.amount_minor,
           network: s.network,
           token_mint: s.token_mint,
@@ -302,46 +356,65 @@ async function catchupConfirming(supabase: ReturnType<typeof db>) {
         });
 
         if (!txErr || /duplicate key/i.test(txErr.message)) {
-          await supabase
-            .from('checkout_sessions')
-            .update({
-              status: 'confirmed',
-              payer_address: result.payerAddress,
-              confirmed_at: new Date().toISOString(),
-            })
-            .eq('id', s.id)
-            .eq('status', 'confirming');
-
-          // Enqueue webhook (look up merchant URL).
-          const { data: prof } = await supabase
+          // Enqueue webhook BEFORE flipping the session, with idempotency
+          // dedupe so we don't double-fire if a previous run partially
+          // succeeded. If the webhook insert errors (and the merchant has a
+          // URL configured), DO NOT flip the session — leave it in
+          // 'confirming' for the next catchup tick.
+          const { data: prof, error: profErr } = await supabase
             .from('profiles')
             .select('webhook_url')
             .eq('id', s.merchant_id)
             .single();
-          if (prof?.webhook_url) {
-            await supabase.from('webhook_deliveries').insert({
-              merchant_id: s.merchant_id,
-              event: 'payment.confirmed',
-              url: prof.webhook_url,
-              status: 'queued',
-              next_attempt_at: new Date().toISOString(),
-              payload: {
+          let canFlip = true;
+          if (profErr) {
+            canFlip = false;
+          } else if (prof?.webhook_url) {
+            const { data: existing } = await supabase
+              .from('webhook_deliveries')
+              .select('id')
+              .eq('merchant_id', s.merchant_id)
+              .eq('event', 'payment.confirmed')
+              .contains('payload', { session_id: s.id })
+              .limit(1);
+            if (!existing || existing.length === 0) {
+              const { error: insErr } = await supabase.from('webhook_deliveries').insert({
+                merchant_id: s.merchant_id,
                 event: 'payment.confirmed',
-                session_id: s.id,
-                product_id: s.product_id,
-                amount_minor: s.amount_minor,
-                amount_usd: Number(s.amount_minor) / 1_000_000,
-                currency: 'USD',
-                network: s.network,
-                token: s.token,
-                reference: s.reference,
-                tx_hash: s.tx_hash,
-                payer_address: result.payerAddress,
-                timestamp: new Date().toISOString(),
-              },
-            });
+                url: prof.webhook_url,
+                status: 'queued',
+                next_attempt_at: new Date().toISOString(),
+                payload: {
+                  event: 'payment.confirmed',
+                  session_id: s.id,
+                  product_id: s.product_id,
+                  amount_minor: s.amount_minor,
+                  amount_usd: Number(s.amount_minor) / 10 ** tokenDecimals(s.token),
+                  currency: 'USD',
+                  network: s.network,
+                  token: s.token,
+                  reference: s.reference,
+                  tx_hash: s.tx_hash,
+                  payer_address: result.payerAddress,
+                  timestamp: new Date().toISOString(),
+                },
+              });
+              if (insErr) canFlip = false;
+            }
           }
-          confirmed++;
+
+          if (canFlip) {
+            await supabase
+              .from('checkout_sessions')
+              .update({
+                status: 'confirmed',
+                payer_address: result.payerAddress,
+                confirmed_at: new Date().toISOString(),
+              })
+              .eq('id', s.id)
+              .eq('status', 'confirming');
+            confirmed++;
+          }
         }
       } else if (result.status === 'failed') {
         await supabase
@@ -358,6 +431,16 @@ async function catchupConfirming(supabase: ReturnType<typeof db>) {
   }
 
   return { checked: stuck.length, confirmed, failed };
+}
+
+function tokenDecimals(token: string): number {
+  switch (token) {
+    case 'USDC':
+    case 'USDT':
+      return 6;
+    default:
+      throw new Error(`unknown token: ${token}`);
+  }
 }
 
 function solanaRpcUrl(): string {

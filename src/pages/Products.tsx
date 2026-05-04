@@ -40,11 +40,19 @@ const Products = () => {
     const parsedPrice = parseFloat(price);
     if (isNaN(parsedPrice) || parsedPrice <= 0) return toast.error('Enter a valid price');
     setSaving(true);
+    // Write both representations: `price_minor` is the canonical 6-decimal
+    // integer used by the server-side verifier (USDC/USDT have 6dp), and
+    // `price_usd` is kept for the legacy/display path. Round to whole cents
+    // first so the trailing 4 digits stay zero — Polygon checkout encodes
+    // a per-session reference suffix into those digits.
+    const cents = Math.round(parsedPrice * 100);
+    const priceMinor = cents * 10000; // cents * 10^4 = 6dp minor units
     const { error } = await supabase.from('products').insert({
       merchant_id: user!.id,
       name,
       description: description || null,
       price_usd: parsedPrice,
+      price_minor: priceMinor,
     });
     setSaving(false);
     if (error) return toast.error(error.message);

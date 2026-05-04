@@ -69,26 +69,34 @@ const Checkout = () => {
   useEffect(() => () => pollAbortRef.current?.abort(), []);
 
   // ---- Load product (display only). The server re-validates everything. ----
+  //
+  // We use SECURITY DEFINER RPCs that take a UUID arg and return at most one
+  // row, NOT direct table SELECTs. The unguessable product UUID is the
+  // capability token — an anon caller without the id cannot enumerate any
+  // merchant's catalog.
   useEffect(() => {
     if (!productId) return;
     (async () => {
-      const { data: prod } = await supabase
-        .from('products')
-        .select('id, name, description, price_usd, merchant_id')
-        .eq('id', productId)
-        .single();
+      const { data: prodRows } = await supabase
+        .rpc('get_product_for_checkout', { p_id: productId });
+      const prod = Array.isArray(prodRows) ? prodRows[0] : prodRows;
       if (!prod) {
         setNotFound(true);
         setLoading(false);
         return;
       }
       setProduct(prod as ProductDisplay);
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('solana_wallet, polygon_wallet')
-        .eq('id', prod.merchant_id)
-        .single();
-      setWallets(profile as MerchantDisplay);
+      // Privacy-preserving: we only get a {has_solana, has_polygon} pair
+      // from the server, never the raw wallet addresses. The actual
+      // destination wallet comes back from create-checkout-session, which
+      // is server-authoritative.
+      const { data: netsRows } = await supabase
+        .rpc('get_merchant_supported_networks', { p_id: prod.merchant_id });
+      const nets = Array.isArray(netsRows) ? netsRows[0] : netsRows;
+      setWallets({
+        solana_wallet: nets?.has_solana ? '__configured__' : null,
+        polygon_wallet: nets?.has_polygon ? '__configured__' : null,
+      });
       setLoading(false);
     })();
   }, [productId]);
@@ -300,11 +308,10 @@ const Checkout = () => {
                   <button
                     key={n}
                     onClick={() => setNetwork(n)}
-                    className={`py-3 rounded-xl border text-sm font-medium capitalize transition ${
-                      network === n
+                    className={`py-3 rounded-xl border text-sm font-medium capitalize transition ${network === n
                         ? 'border-accent bg-accent/10 text-white'
                         : 'border-zinc-800 text-zinc-400 hover:border-zinc-600'
-                    }`}
+                      }`}
                   >
                     {n === 'solana' ? '⬡ Solana · USDC' : '⬡ Polygon · USDT'}
                   </button>
