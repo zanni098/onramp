@@ -30,7 +30,7 @@ function dashboardOrigins(): Set<string> {
 
 const COMMON_HEADERS = {
   'Access-Control-Allow-Headers':
-    'authorization, x-client-info, apikey, content-type',
+    'authorization, x-client-info, apikey, content-type, idempotency-key',
   'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
   'Access-Control-Max-Age': '86400',
   Vary: 'Origin',
