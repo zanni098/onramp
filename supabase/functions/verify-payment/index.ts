@@ -29,6 +29,7 @@ import { verifyPolygonPayment } from '../_shared/verify-polygon.ts';
 import { rateLimit } from '../_shared/ratelimit.ts';
 import { clientIp } from '../_shared/auth.ts';
 import { solanaRpcUrl, polygonRpcUrl } from '../_shared/rpc.ts';
+import { enqueueEmailsForConfirmedSession } from '../_shared/email-enqueue.ts';
 
 const POLYGON_CONFIRMATIONS = 64;
 
@@ -189,6 +190,24 @@ serve(async (req) => {
 
   if (txInsErr && !/duplicate key/i.test(txInsErr.message)) {
     return json({ error: 'ledger_insert_failed', detail: txInsErr.message }, 500);
+  }
+
+  // 5b. Enqueue email receipts (idempotent: dedupes on session_id + kind).
+  //     This is fire-and-forget for the response — failure to enqueue an
+  //     email row should NOT fail the whole confirmation. Worst case: the
+  //     receipt is missed for this session; the merchant still gets paid
+  //     and the webhook still fires.
+  try {
+    const confirmedAtIso = new Date().toISOString();
+    await enqueueEmailsForConfirmedSession(
+      supabase,
+      session,
+      result.payerAddress,
+      txHash,
+      confirmedAtIso,
+    );
+  } catch (e) {
+    console.warn('email enqueue failed (non-fatal)', String(e));
   }
 
   // 6. Enqueue webhook delivery BEFORE flipping the session to confirmed.

@@ -59,6 +59,8 @@ const Checkout = () => {
   const [network, setNetwork] = useState<Network>('solana');
   const [step, setStep] = useState<UiStep>('select');
   const [connectedWallet, setConnectedWallet] = useState<string | null>(null);
+  const [customerEmail, setCustomerEmail] = useState('');
+  const [emailError, setEmailError] = useState<string | null>(null);
 
   const [session, setSession] = useState<CheckoutSession | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
@@ -149,6 +151,16 @@ const Checkout = () => {
   };
 
   const handleConnect = () => {
+    // Validate email if present (it is optional — empty string means "skip").
+    const trimmed = customerEmail.trim();
+    if (trimmed.length > 0) {
+      const ok = trimmed.length <= 254 && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(trimmed);
+      if (!ok) {
+        setEmailError('Please enter a valid email address (or leave it blank).');
+        return;
+      }
+    }
+    setEmailError(null);
     if (network === 'solana') connectPhantom();
     else connectMetaMask();
   };
@@ -161,7 +173,12 @@ const Checkout = () => {
     if (!product) return;
     setStep('creating_session');
     try {
-      const s = await createCheckoutSession({ product_id: product.id, network: net });
+      const trimmedEmail = customerEmail.trim();
+      const s = await createCheckoutSession({
+        product_id: product.id,
+        network: net,
+        customer_email: trimmedEmail.length > 0 ? trimmedEmail : undefined,
+      });
       setSession(s);
       setStep('awaiting_payment');
     } catch (err: any) {
@@ -302,6 +319,22 @@ const Checkout = () => {
         {step === 'select' && (
           <>
             <div>
+              <p className="text-sm text-zinc-400 mb-2">
+                Email <span className="text-zinc-600">(optional — for receipt)</span>
+              </p>
+              <input
+                type="email"
+                inputMode="email"
+                autoComplete="email"
+                value={customerEmail}
+                onChange={(e) => { setCustomerEmail(e.target.value); setEmailError(null); }}
+                placeholder="you@example.com"
+                className="glass-input w-full"
+                maxLength={254}
+              />
+              {emailError && <p className="text-xs text-red-400 mt-1">{emailError}</p>}
+            </div>
+            <div>
               <p className="text-sm text-zinc-400 mb-3">Select network</p>
               <div className="grid grid-cols-2 gap-3">
                 {(['solana', 'polygon'] as Network[]).map((n) => (
@@ -309,8 +342,8 @@ const Checkout = () => {
                     key={n}
                     onClick={() => setNetwork(n)}
                     className={`py-3 rounded-xl border text-sm font-medium capitalize transition ${network === n
-                        ? 'border-accent bg-accent/10 text-white'
-                        : 'border-zinc-800 text-zinc-400 hover:border-zinc-600'
+                      ? 'border-accent bg-accent/10 text-white'
+                      : 'border-zinc-800 text-zinc-400 hover:border-zinc-600'
                       }`}
                   >
                     {n === 'solana' ? '⬡ Solana · USDC' : '⬡ Polygon · USDT'}

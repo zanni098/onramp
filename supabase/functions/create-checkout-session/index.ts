@@ -34,7 +34,7 @@ serve(async (req) => {
   if (pre) return pre;
   if (req.method !== 'POST') return json({ error: 'method_not_allowed' }, 405);
 
-  let body: { product_id?: string; network?: string };
+  let body: { product_id?: string; network?: string; customer_email?: string };
   try {
     body = await req.json();
   } catch {
@@ -43,6 +43,13 @@ serve(async (req) => {
 
   const productId = body.product_id;
   const network = body.network as 'solana' | 'polygon' | undefined;
+  const rawEmail = typeof body.customer_email === 'string' ? body.customer_email.trim() : '';
+  if (rawEmail !== '') {
+    if (rawEmail.length > 254 || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(rawEmail)) {
+      return json({ error: 'invalid_customer_email' }, 400);
+    }
+  }
+  const customerEmail = rawEmail.length > 0 ? rawEmail : null;
 
   if (!productId || !network) return json({ error: 'missing_fields' }, 400);
   if (network !== 'solana' && network !== 'polygon') {
@@ -137,6 +144,7 @@ serve(async (req) => {
       reference,
       status: 'awaiting_payment',
       expires_at: expiresAt,
+      customer_email: customerEmail,
     })
     .select('*')
     .single();

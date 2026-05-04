@@ -90,6 +90,7 @@ async function getFnAuthed<T>(path: string): Promise<T> {
 export function createCheckoutSession(input: {
   product_id: string;
   network: 'solana' | 'polygon';
+  customer_email?: string;
 }): Promise<CheckoutSession> {
   return postFn<CheckoutSession>('create-checkout-session', input);
 }

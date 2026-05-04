@@ -24,6 +24,8 @@ import { signPayload, signatureHeader } from '../_shared/hmac.ts';
 import { verifySolanaPayment } from '../_shared/verify-solana.ts';
 import { verifyPolygonPayment } from '../_shared/verify-polygon.ts';
 import { solanaRpcUrl, polygonRpcUrl } from '../_shared/rpc.ts';
+import { enqueueEmailsForConfirmedSession } from '../_shared/email-enqueue.ts';
+import { sendEmailViaResend } from '../_shared/email.ts';
 
 const HTTP_TIMEOUT_MS = 5_000;
 const MAX_ATTEMPTS = 12;
@@ -60,6 +62,7 @@ serve(async (req) => {
     swept: await sweepStaleDelivering(supabase),
     deliveries: await drainDeliveries(supabase),
     catchup: await catchupConfirming(supabase),
+    emails: await drainEmailDeliveries(supabase),
   };
 
   return json(result);
@@ -408,6 +411,19 @@ async function catchupConfirming(supabase: ReturnType<typeof db>) {
           }
 
           if (canFlip) {
+            // Enqueue receipt + merchant notification emails. Idempotent on
+            // (session_id, kind) so a retried catchup will not double-fire.
+            try {
+              await enqueueEmailsForConfirmedSession(
+                supabase,
+                s,
+                result.payerAddress,
+                s.tx_hash,
+                new Date().toISOString(),
+              );
+            } catch (e) {
+              console.warn('catchup: email enqueue failed (non-fatal)', String(e));
+            }
             await supabase
               .from('checkout_sessions')
               .update({
@@ -448,3 +464,151 @@ function tokenDecimals(token: string): number {
 }
 
 // RPC URL resolution moved to ../_shared/rpc.ts (mode-aware).
+
+// ---------------------------------------------------------------------------
+// Email delivery drain
+//
+// Mirrors drainDeliveries / sweepStaleDelivering for webhooks. We use the
+// same status state machine ('queued' -> 'sending' -> 'sent' | 'failed')
+// and the same exponential backoff. Resend 4xx is hard-fail (bad address,
+// suppressed recipient, etc); 5xx + network errors are retryable.
+// ---------------------------------------------------------------------------
+
+const EMAIL_BATCH_SIZE = 25;
+const EMAIL_MAX_ATTEMPTS = 8;
+
+interface EmailRow {
+  id: string;
+  merchant_id: string;
+  to_email: string;
+  subject: string;
+  html: string;
+  text: string;
+  attempt_count: number;
+}
+
+async function drainEmailDeliveries(supabase: ReturnType<typeof db>) {
+  // 1. Sweep stale 'sending' rows whose claim crashed mid-send.
+  const staleCutoff = new Date(Date.now() - STALE_DELIVERING_AFTER_MS).toISOString();
+  await supabase
+    .from('email_deliveries')
+    .update({ status: 'queued', updated_at: new Date().toISOString() })
+    .eq('status', 'sending')
+    .lt('updated_at', staleCutoff);
+
+  const nowIso = new Date().toISOString();
+  const { data: candidates } = await supabase
+    .from('email_deliveries')
+    .select('id')
+    .eq('status', 'queued')
+    .lte('next_attempt_at', nowIso)
+    .order('next_attempt_at', { ascending: true })
+    .limit(EMAIL_BATCH_SIZE);
+
+  if (!candidates || candidates.length === 0) {
+    return { picked: 0, sent: 0, retried: 0, failed: 0 };
+  }
+  const ids = candidates.map((c) => c.id);
+
+  const { data: claimed } = await supabase
+    .from('email_deliveries')
+    .update({ status: 'sending', updated_at: nowIso })
+    .in('id', ids)
+    .eq('status', 'queued')
+    .select('id, merchant_id, to_email, subject, html, text, attempt_count');
+
+  if (!claimed || claimed.length === 0) {
+    return { picked: 0, sent: 0, retried: 0, failed: 0 };
+  }
+
+  let sent = 0, retried = 0, failed = 0;
+  for (const e of claimed as EmailRow[]) {
+    const outcome = await sendOneEmail(supabase, e);
+    if (outcome === 'sent') sent++;
+    else if (outcome === 'retried') retried++;
+    else failed++;
+  }
+  return { picked: claimed.length, sent, retried, failed };
+}
+
+async function sendOneEmail(
+  supabase: ReturnType<typeof db>,
+  e: EmailRow,
+): Promise<'sent' | 'retried' | 'failed'> {
+  let result;
+  try {
+    result = await sendEmailViaResend({
+      to: e.to_email,
+      subject: e.subject,
+      html: e.html,
+      text: e.text,
+    });
+  } catch (err) {
+    result = {
+      status: 'retryable' as const,
+      statusCode: 0,
+      errorMessage: err instanceof Error ? err.message : String(err),
+    };
+  }
+
+  if (result.status === 'sent') {
+    await supabase
+      .from('email_deliveries')
+      .update({
+        status: 'sent',
+        attempt_count: e.attempt_count + 1,
+        last_status_code: result.statusCode,
+        last_error: null,
+        provider_id: result.providerId ?? null,
+        delivered_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', e.id);
+    return 'sent';
+  }
+
+  if (result.status === 'hard_fail') {
+    await supabase
+      .from('email_deliveries')
+      .update({
+        status: 'failed',
+        attempt_count: e.attempt_count + 1,
+        last_status_code: result.statusCode,
+        last_error: result.errorMessage ?? `resend ${result.statusCode}`,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', e.id);
+    return 'failed';
+  }
+
+  // Retryable.
+  const nextAttempt = e.attempt_count + 1;
+  if (nextAttempt >= EMAIL_MAX_ATTEMPTS) {
+    await supabase
+      .from('email_deliveries')
+      .update({
+        status: 'failed',
+        attempt_count: nextAttempt,
+        last_status_code: result.statusCode,
+        last_error: `gave up after ${nextAttempt} attempts (${result.errorMessage ?? 'unknown'})`,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', e.id);
+    return 'failed';
+  }
+
+  const delayMs = backoffMs(nextAttempt);
+  const nextAttemptAt = new Date(Date.now() + delayMs).toISOString();
+  await supabase
+    .from('email_deliveries')
+    .update({
+      status: 'queued',
+      attempt_count: nextAttempt,
+      last_status_code: result.statusCode,
+      last_error: result.errorMessage ?? `status ${result.statusCode}`,
+      next_attempt_at: nextAttemptAt,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', e.id);
+  return 'retried';
+}

@@ -157,6 +157,14 @@ async function handleCreateCheckoutSession(
   // Input shape.
   const productId = typeof body.product_id === 'string' ? body.product_id : null;
   const network = body.network as string | undefined;
+  const customerEmailRaw = typeof body.customer_email === 'string' ? body.customer_email.trim() : null;
+
+  if (customerEmailRaw !== null && customerEmailRaw !== '') {
+    if (customerEmailRaw.length > 254 || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(customerEmailRaw)) {
+      return apiError('invalid_request_error', 'invalid_field', 'customer_email is not a valid email address.', 400, 'customer_email');
+    }
+  }
+  const customerEmail = customerEmailRaw && customerEmailRaw.length > 0 ? customerEmailRaw : null;
 
   if (!productId) {
     return apiError('invalid_request_error', 'missing_field', 'Missing required field: product_id.', 400, 'product_id');
@@ -261,6 +269,7 @@ async function handleCreateCheckoutSession(
       status: 'awaiting_payment',
       expires_at: expiresAt,
       is_test: isTest,
+      customer_email: customerEmail,
     })
     .select('*')
     .single();
@@ -465,6 +474,7 @@ function serializeCheckoutSession(
     failure_reason: s.failure_reason ?? null,
     expires_at: s.expires_at,
     created_at: s.created_at,
+    customer_email: s.customer_email ?? null,
     product: { id: s.product_id, name: productName },
     livemode: !s.is_test,
   };
