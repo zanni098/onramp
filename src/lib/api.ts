@@ -135,7 +135,8 @@ export function updateMerchantConfig(
 }
 
 export interface MerchantSecrets {
-  secret_key: string;
+  secret_key: string;        // sk_live_<...>
+  test_secret_key: string;   // sk_test_<...>
   webhook_secret: string;
   rotated_at: string;
 }

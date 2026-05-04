@@ -28,6 +28,7 @@ import { verifySolanaPayment } from '../_shared/verify-solana.ts';
 import { verifyPolygonPayment } from '../_shared/verify-polygon.ts';
 import { rateLimit } from '../_shared/ratelimit.ts';
 import { clientIp } from '../_shared/auth.ts';
+import { solanaRpcUrl, polygonRpcUrl } from '../_shared/rpc.ts';
 
 const POLYGON_CONFIRMATIONS = 64;
 
@@ -120,7 +121,7 @@ serve(async (req) => {
   let result;
   try {
     if (session.network === 'solana') {
-      const rpcUrl = solanaRpcUrl();
+      const rpcUrl = solanaRpcUrl(!!session.is_test);
       result = await verifySolanaPayment({
         txHash,
         expectedDestination: session.destination,
@@ -130,7 +131,7 @@ serve(async (req) => {
         rpcUrl,
       });
     } else if (session.network === 'polygon') {
-      const rpcUrl = polygonRpcUrl();
+      const rpcUrl = polygonRpcUrl(!!session.is_test);
       result = await verifyPolygonPayment({
         txHash,
         expectedDestination: session.destination,
@@ -183,6 +184,7 @@ serve(async (req) => {
       payer_address: result.payerAddress,
       status: 'confirmed',
       confirmed_at: new Date().toISOString(),
+      is_test: !!session.is_test,
     });
 
   if (txInsErr && !/duplicate key/i.test(txInsErr.message)) {
@@ -318,18 +320,4 @@ function tokenDecimals(token: string): number {
   }
 }
 
-function solanaRpcUrl(): string {
-  const helius = Deno.env.get('HELIUS_API_KEY');
-  if (helius) return `https://mainnet.helius-rpc.com/?api-key=${helius}`;
-  const fallback = Deno.env.get('SOLANA_RPC_URL');
-  if (fallback) return fallback;
-  throw new Error('No Solana RPC configured (HELIUS_API_KEY or SOLANA_RPC_URL)');
-}
-
-function polygonRpcUrl(): string {
-  const alchemy = Deno.env.get('ALCHEMY_API_KEY');
-  if (alchemy) return `https://polygon-mainnet.g.alchemy.com/v2/${alchemy}`;
-  const fallback = Deno.env.get('POLYGON_RPC_URL');
-  if (fallback) return fallback;
-  throw new Error('No Polygon RPC configured (ALCHEMY_API_KEY or POLYGON_RPC_URL)');
-}
+// RPC URL resolution moved to ../_shared/rpc.ts (mode-aware).

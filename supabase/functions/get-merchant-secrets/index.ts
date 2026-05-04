@@ -25,7 +25,7 @@ serve(async (req) => {
   const supabase = db();
   const { data, error } = await supabase
     .from('merchant_secrets')
-    .select('secret_key, webhook_secret, rotated_at')
+    .select('secret_key, test_secret_key, webhook_secret, rotated_at')
     .eq('merchant_id', auth.userId)
     .single();
 

@@ -32,19 +32,11 @@ import {
   newReference,
   randomPolygonSuffix,
 } from '../_shared/reference.ts';
+import { tokenFor, type Network } from '../_shared/tokens.ts';
 
 const SESSION_TTL_MINUTES = 15;
 const PAGINATION_DEFAULT = 20;
 const PAGINATION_MAX = 100;
-
-const TOKEN_REGISTRY = {
-  solana: {
-    USDC: { mint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', decimals: 6 },
-  },
-  polygon: {
-    USDT: { mint: '0xc2132D05D31c914a87C6611C10748AEb04B58e8F', decimals: 6 },
-  },
-} as const;
 
 // Public checkout URL base. Configurable via env so non-prod deploys point
 // at the right host. Falls back to the production URL.
@@ -67,7 +59,7 @@ serve(async (req) => {
   // ---- Auth (all endpoints require a live API key) -----------------------
   const auth = await requireApiKey(req);
   if (auth instanceof Response) return auth;
-  const { merchantId } = auth;
+  const { merchantId, isTest } = auth;
 
   // ---- Per-merchant rate limit: 600 req / 60s ----------------------------
   const rl = await rateLimit(`api:m:${merchantId}`, 600, 60);
@@ -83,21 +75,21 @@ serve(async (req) => {
   try {
     // POST /checkout_sessions
     if (req.method === 'POST' && path === '/checkout_sessions') {
-      return await handleCreateCheckoutSession(req, merchantId);
+      return await handleCreateCheckoutSession(req, merchantId, isTest);
     }
     // GET /checkout_sessions/:id
     {
       const m = req.method === 'GET' && path.match(/^\/checkout_sessions\/([^/]+)$/);
-      if (m) return await handleGetCheckoutSession(merchantId, m[1]);
+      if (m) return await handleGetCheckoutSession(merchantId, isTest, m[1]);
     }
     // GET /transactions
     if (req.method === 'GET' && path === '/transactions') {
-      return await handleListTransactions(req, merchantId);
+      return await handleListTransactions(req, merchantId, isTest);
     }
     // GET /transactions/:id
     {
       const m = req.method === 'GET' && path.match(/^\/transactions\/([^/]+)$/);
-      if (m) return await handleGetTransaction(merchantId, m[1]);
+      if (m) return await handleGetTransaction(merchantId, isTest, m[1]);
     }
 
     return apiError(
@@ -123,6 +115,7 @@ serve(async (req) => {
 async function handleCreateCheckoutSession(
   req: Request,
   merchantId: string,
+  isTest: boolean,
 ): Promise<Response> {
   const rawBody = await req.text();
   let body: Record<string, unknown> = {};
@@ -233,9 +226,10 @@ async function handleCreateCheckoutSession(
     );
   }
 
-  // Token + reference + amount.
-  const token = network === 'solana' ? 'USDC' : 'USDT';
-  const tokenInfo = network === 'solana' ? TOKEN_REGISTRY.solana.USDC : TOKEN_REGISTRY.polygon.USDT;
+  // Token + reference + final amount_minor (mode-aware).
+  const tokenInfo = tokenFor(isTest ? 'test' : 'live', network as Network);
+  const token = tokenInfo.symbol;
+
   const reference = newReference();
 
   let amountMinor: bigint;
@@ -266,6 +260,7 @@ async function handleCreateCheckoutSession(
       reference,
       status: 'awaiting_payment',
       expires_at: expiresAt,
+      is_test: isTest,
     })
     .select('*')
     .single();
@@ -275,6 +270,9 @@ async function handleCreateCheckoutSession(
   }
 
   const respBody = serializeCheckoutSession(session, tokenInfo.decimals, product.name);
+  // Override livemode flag from the request mode (defensive — the row's
+  // is_test was set above, but the serializer reads from `s.is_test`).
+  respBody.livemode = !isTest;
   if (idemKey && requestHash) {
     await storeIdempotency(merchantId, idemKey, requestHash, 200, respBody);
   }
@@ -304,6 +302,7 @@ async function allocatePolygonAmount(merchantId: string, baseAmountMinor: bigint
 // ---------------------------------------------------------------------------
 async function handleGetCheckoutSession(
   merchantId: string,
+  isTest: boolean,
   id: string,
 ): Promise<Response> {
   if (!isUuid(id)) {
@@ -315,6 +314,7 @@ async function handleGetCheckoutSession(
     .select('*, products!inner(id,name)')
     .eq('id', id)
     .eq('merchant_id', merchantId)
+    .eq('is_test', isTest)
     .maybeSingle();
   if (error) {
     return apiError('api_error', 'session_lookup_failed', 'Could not load session.', 500);
@@ -336,6 +336,7 @@ async function handleGetCheckoutSession(
 async function handleListTransactions(
   req: Request,
   merchantId: string,
+  isTest: boolean,
 ): Promise<Response> {
   const url = new URL(req.url);
   const limitRaw = url.searchParams.get('limit');
@@ -373,6 +374,7 @@ async function handleListTransactions(
       .select('created_at')
       .eq('id', startingAfter)
       .eq('merchant_id', merchantId)
+      .eq('is_test', isTest)
       .maybeSingle();
     if (!cur) {
       return apiError('not_found_error', 'cursor_not_found', 'starting_after refers to an unknown transaction.', 404);
@@ -384,6 +386,7 @@ async function handleListTransactions(
     .from('transactions')
     .select('*')
     .eq('merchant_id', merchantId)
+    .eq('is_test', isTest)
     .order('created_at', { ascending: false })
     .order('id', { ascending: false })
     .limit(limit + 1);
@@ -412,6 +415,7 @@ async function handleListTransactions(
 // ---------------------------------------------------------------------------
 async function handleGetTransaction(
   merchantId: string,
+  isTest: boolean,
   id: string,
 ): Promise<Response> {
   if (!isUuid(id)) {
@@ -423,6 +427,7 @@ async function handleGetTransaction(
     .select('*')
     .eq('id', id)
     .eq('merchant_id', merchantId)
+    .eq('is_test', isTest)
     .maybeSingle();
   if (error) {
     return apiError('api_error', 'transaction_lookup_failed', 'Could not load transaction.', 500);
@@ -461,7 +466,7 @@ function serializeCheckoutSession(
     expires_at: s.expires_at,
     created_at: s.created_at,
     product: { id: s.product_id, name: productName },
-    livemode: true,
+    livemode: !s.is_test,
   };
 }
 
@@ -481,7 +486,7 @@ function serializeTransaction(t: Record<string, unknown>) {
     status: t.status,
     confirmed_at: t.confirmed_at ?? null,
     created_at: t.created_at,
-    livemode: true,
+    livemode: !t.is_test,
   };
 }
 

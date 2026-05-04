@@ -101,44 +101,76 @@ const Settings = () => {
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm text-zinc-400 mb-2">Secret Key</label>
-              {secrets ? (
-                <div className="flex gap-2">
-                  <input
-                    className="glass-input flex-1 font-mono text-sm"
-                    type={showSecret ? 'text' : 'password'}
-                    readOnly
-                    value={secrets.secret_key}
-                  />
-                  <button
-                    onClick={() => setShowSecret((v) => !v)}
-                    className="glow-button-secondary px-3"
-                  >
-                    {showSecret ? <EyeOff size={14} /> : <Eye size={14} />}
-                  </button>
-                  <button
-                    onClick={() => copy(secrets.secret_key, 'Secret key')}
-                    className="glow-button-secondary px-3"
-                  >
-                    <Copy size={14} />
-                  </button>
+            {secrets ? (
+              <>
+                <div>
+                  <label className="block text-sm text-zinc-400 mb-2 flex items-center gap-2">
+                    <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] uppercase tracking-wider font-medium">Live</span>
+                    Secret Key
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      className="glass-input flex-1 font-mono text-sm"
+                      type={showSecret ? 'text' : 'password'}
+                      readOnly
+                      value={secrets.secret_key}
+                    />
+                    <button
+                      onClick={() => setShowSecret((v) => !v)}
+                      className="glow-button-secondary px-3"
+                    >
+                      {showSecret ? <EyeOff size={14} /> : <Eye size={14} />}
+                    </button>
+                    <button
+                      onClick={() => copy(secrets.secret_key, 'Live key')}
+                      className="glow-button-secondary px-3"
+                    >
+                      <Copy size={14} />
+                    </button>
+                  </div>
                 </div>
-              ) : (
+                <div>
+                  <label className="block text-sm text-zinc-400 mb-2 flex items-center gap-2">
+                    <span className="px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 text-[10px] uppercase tracking-wider font-medium">Test</span>
+                    Secret Key
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      className="glass-input flex-1 font-mono text-sm"
+                      type={showSecret ? 'text' : 'password'}
+                      readOnly
+                      value={secrets.test_secret_key}
+                    />
+                    <button
+                      onClick={() => copy(secrets.test_secret_key, 'Test key')}
+                      className="glow-button-secondary px-3"
+                    >
+                      <Copy size={14} />
+                    </button>
+                  </div>
+                  <p className="text-xs text-zinc-600 mt-2">
+                    Test keys run on Solana devnet + Polygon Amoy. No real funds
+                    move. Use these to integrate without spending money.
+                  </p>
+                </div>
+              </>
+            ) : (
+              <div>
+                <label className="block text-sm text-zinc-400 mb-2">API Secret Keys</label>
                 <button
                   onClick={loadSecrets}
                   disabled={secretsLoading}
                   className="glow-button-secondary text-sm px-4 py-2 flex items-center gap-2"
                 >
                   {secretsLoading ? <Loader size={14} className="animate-spin" /> : <ShieldAlert size={14} />}
-                  Reveal secret key
+                  Reveal API keys
                 </button>
-              )}
-              <p className="text-xs text-zinc-600 mt-2">
-                Secrets are loaded over an authenticated server endpoint and
-                are never cached in the page.
-              </p>
-            </div>
+                <p className="text-xs text-zinc-600 mt-2">
+                  Loaded over an authenticated server endpoint. Never cached
+                  in the page. You will see both <span className="text-emerald-400">live</span> and <span className="text-amber-400">test</span> keys.
+                </p>
+              </div>
+            )}
           </div>
         </div>
 

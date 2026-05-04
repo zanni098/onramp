@@ -1,20 +1,21 @@
 // API-key authentication for the public REST API.
 //
-// Auth header:   Authorization: Bearer sk_live_<...>
+// Auth header:   Authorization: Bearer sk_live_<...>   (live mode)
+//                Authorization: Bearer sk_test_<...>   (test mode)
 //
-// Looked up against merchant_secrets.secret_key. Constant-time string
-// compare on the matched row as defense-in-depth (the eq() filter already
-// requires an exact match, but treating credential compares as
-// constant-time is the right habit).
+// Looked up against the matching column on merchant_secrets:
+//   sk_live_<...> -> merchant_secrets.secret_key
+//   sk_test_<...> -> merchant_secrets.test_secret_key
 //
-// Test-mode keys (sk_test_) are NOT yet supported — they are explicitly
-// rejected here so behaviour is loud and testable. Phase 2 of the API
-// upgrade adds proper test mode (separate keys + devnet/Amoy routing).
+// Test mode runs on Solana devnet + Polygon Amoy; merchants use it to
+// integrate without spending real money. Both keys for the same merchant
+// resolve to the same merchant_id; the `isTest` flag is what downstream
+// routing keys off (token mint, RPC URL, is_test flag on persisted rows).
 
 import { db } from './db.ts';
 import { apiError } from './api-error.ts';
 
-export type ApiAuth = { merchantId: string };
+export type ApiAuth = { merchantId: string; isTest: boolean };
 
 export async function requireApiKey(req: Request): Promise<ApiAuth | Response> {
   const auth =
@@ -24,71 +25,49 @@ export async function requireApiKey(req: Request): Promise<ApiAuth | Response> {
     return apiError(
       'authentication_error',
       'missing_api_key',
-      'No API key provided. Pass `Authorization: Bearer sk_live_...`.',
+      'No API key provided. Pass `Authorization: Bearer sk_live_...` or `sk_test_...`.',
       401,
     );
   }
   const key = auth.replace(/^bearer\s+/i, '').trim();
 
-  if (key.startsWith('sk_test_')) {
-    return apiError(
-      'authentication_error',
-      'test_mode_unsupported',
-      'Test mode keys are not yet supported. Use a live API key (sk_live_...).',
-      401,
-    );
-  }
-  if (!key.startsWith('sk_live_')) {
+  const isTest = key.startsWith('sk_test_');
+  const isLive = key.startsWith('sk_live_');
+  if (!isTest && !isLive) {
     return apiError(
       'authentication_error',
       'invalid_api_key',
-      'Invalid API key format.',
+      'Invalid API key format. Expected sk_live_... or sk_test_...',
       401,
     );
   }
   if (key.length > 128) {
-    return apiError(
-      'authentication_error',
-      'invalid_api_key',
-      'Invalid API key.',
-      401,
-    );
+    return apiError('authentication_error', 'invalid_api_key', 'Invalid API key.', 401);
   }
+
+  const column = isTest ? 'test_secret_key' : 'secret_key';
 
   const supabase = db();
   const { data, error } = await supabase
     .from('merchant_secrets')
-    .select('merchant_id, secret_key')
-    .eq('secret_key', key)
+    .select(`merchant_id, ${column}`)
+    .eq(column, key)
     .maybeSingle();
 
   if (error) {
     console.error('api key lookup failed', error.message);
-    return apiError(
-      'api_error',
-      'auth_lookup_failed',
-      'Could not validate API key.',
-      500,
-    );
+    return apiError('api_error', 'auth_lookup_failed', 'Could not validate API key.', 500);
   }
   if (!data) {
-    return apiError(
-      'authentication_error',
-      'invalid_api_key',
-      'Invalid API key provided.',
-      401,
-    );
+    return apiError('authentication_error', 'invalid_api_key', 'Invalid API key provided.', 401);
   }
-  if (!constantTimeEq(data.secret_key, key)) {
-    return apiError(
-      'authentication_error',
-      'invalid_api_key',
-      'Invalid API key provided.',
-      401,
-    );
+  // deno-lint-ignore no-explicit-any
+  const stored = (data as any)[column] as string;
+  if (!constantTimeEq(stored, key)) {
+    return apiError('authentication_error', 'invalid_api_key', 'Invalid API key provided.', 401);
   }
 
-  return { merchantId: data.merchant_id };
+  return { merchantId: data.merchant_id, isTest };
 }
 
 function constantTimeEq(a: string, b: string): boolean {
