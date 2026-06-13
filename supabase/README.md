@@ -92,6 +92,11 @@ tables. Migrations explicitly `REVOKE INSERT, UPDATE, DELETE`.
 0005_ratelimit.sql               rl_consume RPC
 0006_drop_profile_secrets.sql    drops profiles.secret_key, profiles.webhook_secret
 0007_signup_trigger.sql          server-side profile + secrets on auth.users insert
+0008 … 0016                      cron config, trigger fix, security hardening,
+                                 capability reads, cron secret, dead-grant revokes,
+                                 idempotency keys, test mode, email receipts
+0017_backfill_orphan_merchants.sql  repairs pre-trigger accounts (missing
+                                 profiles / public_key / merchant_secrets)
 ```
 
 `0007` MUST be applied *before* the new dashboard build is rolled out and
