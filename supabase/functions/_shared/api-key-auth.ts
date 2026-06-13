@@ -61,8 +61,7 @@ export async function requireApiKey(req: Request): Promise<ApiAuth | Response> {
   if (!data) {
     return apiError('authentication_error', 'invalid_api_key', 'Invalid API key provided.', 401);
   }
-  // deno-lint-ignore no-explicit-any
-  const stored = (data as any)[column] as string;
+  const stored = (data as Record<string, string>)[column];
   if (!constantTimeEq(stored, key)) {
     return apiError('authentication_error', 'invalid_api_key', 'Invalid API key provided.', 401);
   }

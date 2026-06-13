@@ -136,5 +136,6 @@ export function sanitizeBusinessName(input: unknown): string | null {
   if (trimmed.length > 80) return null;
   // Strip control chars.
   // deno-lint-ignore no-control-regex
+  // eslint-disable-next-line no-control-regex
   return trimmed.replace(/[\u0000-\u001f\u007f]/g, '');
 }

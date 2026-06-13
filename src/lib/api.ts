@@ -12,8 +12,12 @@ const SUPABASE_ANON = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 if (!SUPABASE_URL || !SUPABASE_ANON) {
   // Don't crash the entire app on import, but make this loud during dev.
-  // eslint-disable-next-line no-console
   console.error('VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY are not set');
+}
+
+/** Narrow an unknown caught value to a human-readable message. */
+export function errorMessage(e: unknown, fallback = 'Something went wrong'): string {
+  return e instanceof Error && e.message ? e.message : fallback;
 }
 
 const FN_BASE = `${SUPABASE_URL}/functions/v1`;
@@ -62,7 +66,7 @@ async function callFn<T>(
   });
 
   const text = await resp.text();
-  let json: any;
+  let json: unknown;
   try {
     json = text ? JSON.parse(text) : {};
   } catch {
@@ -70,7 +74,8 @@ async function callFn<T>(
   }
 
   if (!resp.ok) {
-    throw new Error(json?.error ?? `${path} failed (${resp.status})`);
+    const serverError = (json as { error?: string })?.error;
+    throw new Error(serverError ?? `${path} failed (${resp.status})`);
   }
   return json as T;
 }

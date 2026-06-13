@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Check, AlertCircle, Loader, ExternalLink } from 'lucide-react';
-import { fetchSession } from '../lib/api';
+import { fetchSession, errorMessage } from '../lib/api';
 
 // /success?session=<uuid>
 //
@@ -38,9 +38,9 @@ const Success = () => {
         const s = (await fetchSession(sessionId)) as SessionRow;
         if (!alive) return;
         setSession(s);
-      } catch (e: any) {
+      } catch (e) {
         if (!alive) return;
-        setError(e?.message ?? 'Could not load session');
+        setError(errorMessage(e, 'Could not load session'));
       } finally {
         if (alive) setLoading(false);
       }

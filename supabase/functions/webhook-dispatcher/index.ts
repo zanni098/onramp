@@ -445,7 +445,7 @@ async function catchupConfirming(supabase: ReturnType<typeof db>) {
         failed++;
       }
       // 'pending' -> leave it alone for the next cron tick.
-    } catch (_e) {
+    } catch {
       // Transient RPC errors: ignore, retry next tick.
     }
   }

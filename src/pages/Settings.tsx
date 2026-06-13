@@ -5,6 +5,7 @@ import { useAuth } from '../lib/auth';
 import {
   updateMerchantConfig,
   getMerchantSecrets,
+  errorMessage,
   type MerchantSecrets,
 } from '../lib/api';
 
@@ -33,8 +34,8 @@ const Settings = () => {
       const s = await getMerchantSecrets();
       setSecrets(s);
       setShowSecret(true);
-    } catch (e: any) {
-      toast.error(e?.message ?? 'Could not load secrets');
+    } catch (e) {
+      toast.error(errorMessage(e, 'Could not load secrets'));
     } finally {
       setSecretsLoading(false);
     }
@@ -57,9 +58,9 @@ const Settings = () => {
       });
       await refreshProfile();
       toast.success('Settings saved');
-    } catch (e: any) {
+    } catch (e) {
       // Error codes from update-merchant-config map to friendly messages.
-      const msg = String(e?.message ?? '');
+      const msg = errorMessage(e, '');
       if (msg.startsWith('invalid_solana_wallet')) toast.error('Invalid Solana wallet address');
       else if (msg.startsWith('invalid_polygon_wallet_checksum')) toast.error('Polygon address checksum failed');
       else if (msg.startsWith('invalid_polygon_wallet')) toast.error('Invalid Polygon wallet address');

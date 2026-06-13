@@ -88,4 +88,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 };
 
+// Deliberately co-located with the provider — standard context-module shape.
+// Splitting it into its own file just to appease Fast Refresh isn't worth it.
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => useContext(AuthContext);

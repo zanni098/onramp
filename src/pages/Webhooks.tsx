@@ -11,6 +11,7 @@ import {
   updateMerchantConfig,
   getMerchantSecrets,
   rotateWebhookSecret,
+  errorMessage,
 } from '../lib/api';
 
 interface Delivery {
@@ -63,8 +64,8 @@ const Webhooks = () => {
       await updateMerchantConfig({ webhook_url: url || null });
       await refreshProfile();
       toast.success('Webhook URL saved');
-    } catch (e: any) {
-      const msg = String(e?.message ?? '');
+    } catch (e) {
+      const msg = errorMessage(e, '');
       if (msg.startsWith('invalid_webhook_url:must_use_https')) toast.error('URL must use https://');
       else if (msg.startsWith('invalid_webhook_url:host_not_allowed')) toast.error('That host is not allowed (private/loopback/metadata)');
       else if (msg.startsWith('invalid_webhook_url')) toast.error('Invalid webhook URL');
@@ -79,8 +80,8 @@ const Webhooks = () => {
     try {
       const s = await getMerchantSecrets();
       setSecret(s.webhook_secret);
-    } catch (e: any) {
-      toast.error(e?.message ?? 'Could not load secret');
+    } catch (e) {
+      toast.error(errorMessage(e, 'Could not load secret'));
     } finally {
       setSecretLoading(false);
     }
@@ -93,8 +94,8 @@ const Webhooks = () => {
       const r = await rotateWebhookSecret();
       setSecret(r.webhook_secret);
       toast.success('Webhook secret rotated');
-    } catch (e: any) {
-      toast.error(e?.message ?? 'Rotation failed');
+    } catch (e) {
+      toast.error(errorMessage(e, 'Rotation failed'));
     } finally {
       setRotating(false);
     }
