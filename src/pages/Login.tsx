@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { ArrowRight, Loader } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useMobile } from '../hooks/useMobile';
+import { LogoMark } from '../components/Logo';
 
 const VIDEO_URL = 'https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260314_131748_f2ca2a28-fed7-44c8-b9a9-bd9acdd5ec31.mp4';
 const FONTS = `@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Syne:wght@400;500;600;700;800&display=swap');`;
@@ -48,7 +49,7 @@ export default function Login() {
       {/* Logo (mobile only) */}
       {isMobile && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 28 }}>
-          <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'linear-gradient(135deg,#0070F3,#7c3aed)' }}/>
+          <span style={{ color: '#fff', display: 'inline-flex' }}><LogoMark size={22}/></span>
           <span style={{ fontSize: 16, fontWeight: 700, color: '#fff' }}>onramp</span>
         </div>
       )}
@@ -122,7 +123,7 @@ export default function Login() {
             <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to right, transparent 60%, #000)', pointerEvents: 'none' }}/>
             <div style={{ position: 'relative', zIndex: 1, padding: '48px', maxWidth: 460 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 28 }}>
-                <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'linear-gradient(135deg,#0070F3,#7c3aed)' }}/>
+                <span style={{ color: '#fff', display: 'inline-flex' }}><LogoMark size={22}/></span>
                 <span style={{ fontSize: 20, fontWeight: 700, color: '#fff', letterSpacing: '-0.03em' }}>onramp</span>
               </div>
               <h2 style={{ fontFamily: "'Instrument Serif', serif", fontStyle: 'italic', fontSize: 'clamp(36px, 4vw, 52px)', fontWeight: 400, color: '#fff', lineHeight: 1.05, letterSpacing: '-0.02em', marginBottom: 14 }}>

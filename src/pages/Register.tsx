@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { ArrowRight, Loader, CheckCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useMobile } from '../hooks/useMobile';
+import { LogoMark } from '../components/Logo';
 
 const VIDEO_URL = 'https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260314_131748_f2ca2a28-fed7-44c8-b9a9-bd9acdd5ec31.mp4';
 const FONTS = `@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Syne:wght@400;500;600;700;800&display=swap');`;
@@ -69,7 +70,7 @@ export default function Register() {
       >← Back to onramp</Link>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 28 }}>
-        <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'linear-gradient(135deg,#0070F3,#7c3aed)' }} />
+        <span style={{ color: '#fff', display: 'inline-flex' }}><LogoMark size={22}/></span>
         <span style={{ fontSize: 16, fontWeight: 700, color: '#fff' }}>onramp</span>
       </div>
 

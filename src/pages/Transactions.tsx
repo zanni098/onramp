@@ -3,6 +3,7 @@ import { Loader, ExternalLink } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
+import EmptyState from '../components/EmptyState';
 
 interface Transaction {
   id: string;
@@ -70,15 +71,17 @@ const Transactions = () => {
 
   return (
     <div>
-      <h1 className="text-4xl mb-8">Transactions</h1>
+      <div className="mb-5">
+        <h1 className="text-2xl">Transactions</h1>
+        <p className="text-sub text-sm mt-0.5">Every on-chain settlement, verified server-side.</p>
+      </div>
 
-      <div className="flex gap-2 mb-6">
+      <div className="flex gap-5 border-b border-line mb-5">
         {STATUS_FILTERS.map(f => (
           <button
             key={f}
             onClick={() => changeFilter(f)}
-            className={`px-4 py-1.5 rounded-full text-sm capitalize transition ${filter === f ? 'bg-accent text-white' : 'glow-button-secondary'
-              }`}
+            className={`okx-tab capitalize ${filter === f ? 'okx-tab-active' : ''}`}
           >
             {f}
           </button>
@@ -86,42 +89,51 @@ const Transactions = () => {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-16"><Loader className="animate-spin text-accent" size={28} /></div>
+        <div className="flex justify-center py-16"><Loader className="animate-spin text-white" size={26} /></div>
       ) : txns.length === 0 ? (
-        <div className="glow-card p-10 text-center text-zinc-500">No transactions found.</div>
+        <div className="glow-card">
+          <EmptyState
+            variant="transactions"
+            title="No transactions found"
+            body={filter === 'all'
+              ? 'Settlements land here the moment the chain confirms them.'
+              : `No ${filter} transactions yet.`}
+          />
+        </div>
       ) : (
-        <div className="glow-card overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="glow-card overflow-x-auto">
+          <table className="w-full text-[13px]">
             <thead>
-              <tr className="text-zinc-500 border-b border-zinc-800 text-left">
-                <th className="px-6 py-4 font-normal">ID</th>
-                <th className="px-6 py-4 font-normal">Amount</th>
-                <th className="px-6 py-4 font-normal">Network</th>
-                <th className="px-6 py-4 font-normal">Payer</th>
-                <th className="px-6 py-4 font-normal">Status</th>
-                <th className="px-6 py-4 font-normal">Date</th>
-                <th className="px-6 py-4 font-normal">Explorer</th>
+              <tr className="text-muted text-xs border-b border-line text-left">
+                <th className="px-5 py-3.5 font-medium">ID</th>
+                <th className="px-5 py-3.5 font-medium text-right">Amount</th>
+                <th className="px-5 py-3.5 font-medium">Network</th>
+                <th className="px-5 py-3.5 font-medium">Payer</th>
+                <th className="px-5 py-3.5 font-medium">Status</th>
+                <th className="px-5 py-3.5 font-medium">Date</th>
+                <th className="px-5 py-3.5 font-medium">Explorer</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-800/50">
+            <tbody className="divide-y divide-line/60">
               {txns.map(txn => (
-                <tr key={txn.id} className="text-zinc-300 hover:bg-white/[0.02]">
-                  <td className="px-6 py-4 font-mono text-xs text-zinc-500">{txn.id.slice(0, 8)}…</td>
-                  <td className="px-6 py-4">${txn.amount_usd?.toFixed(2)}</td>
-                  <td className="px-6 py-4 capitalize">{txn.network}</td>
-                  <td className="px-6 py-4 font-mono text-xs text-zinc-500">
+                <tr key={txn.id} className="text-zinc-300 okx-row">
+                  <td className="px-5 py-3.5 font-mono text-xs text-muted">{txn.id.slice(0, 8)}…</td>
+                  <td className={`px-5 py-3.5 text-right tabular-nums font-medium ${txn.status === 'confirmed' ? 'text-up' : 'text-white'}`}>
+                    {txn.status === 'confirmed' ? '+' : ''}${txn.amount_usd?.toFixed(2)}
+                  </td>
+                  <td className="px-5 py-3.5 capitalize text-sub">{txn.network}</td>
+                  <td className="px-5 py-3.5 font-mono text-xs text-muted">
                     {txn.payer_address ? `${txn.payer_address.slice(0, 6)}…${txn.payer_address.slice(-4)}` : '—'}
                   </td>
-                  <td className="px-6 py-4">
-                    <span className={`px-2 py-0.5 rounded-full text-xs ${txn.status === 'confirmed'
-                        ? 'bg-emerald-500/10 text-emerald-400'
-                        : 'bg-red-500/10 text-red-400'
-                      }`}>{txn.status}</span>
+                  <td className="px-5 py-3.5">
+                    <span className={`okx-chip ${txn.status === 'confirmed' ? 'okx-chip-up' : 'okx-chip-down'}`}>
+                      {txn.status}
+                    </span>
                   </td>
-                  <td className="px-6 py-4 text-zinc-500">{new Date(txn.created_at).toLocaleDateString()}</td>
-                  <td className="px-6 py-4">
+                  <td className="px-5 py-3.5 text-muted">{new Date(txn.created_at).toLocaleDateString()}</td>
+                  <td className="px-5 py-3.5">
                     {explorerLink(txn) ? (
-                      <a href={explorerLink(txn)!} target="_blank" rel="noreferrer" className="text-accent hover:text-white transition">
+                      <a href={explorerLink(txn)!} target="_blank" rel="noreferrer" className="text-sub hover:text-white transition">
                         <ExternalLink size={14} />
                       </a>
                     ) : '—'}

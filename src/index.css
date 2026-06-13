@@ -16,24 +16,61 @@
   body {
     @apply bg-background text-zinc-400 font-sans antialiased;
   }
+  /* OKX-school typography: tight geometric sans everywhere in-product.
+     The landing page sets Instrument Serif via inline styles, which win. */
   h1, h2, h3, h4, h5, h6 {
-    @apply text-white font-serif tracking-tight;
+    @apply text-white font-sans font-semibold tracking-tight;
   }
 }
 
 @layer components {
+  /* ── OKX-style shared primitives (dashboard + checkout) ────────────── */
   .glow-card {
-    @apply bg-surface rounded-3xl border border-zinc-800 shadow-glow relative overflow-hidden;
+    @apply bg-surface rounded-2xl border border-line relative overflow-hidden;
   }
   .glow-button {
-    @apply rounded-full bg-white text-black font-medium px-6 py-2 transition duration-200 hover:scale-[1.02] active:scale-[0.98];
+    @apply rounded-lg bg-white text-black font-semibold px-5 py-2.5 text-sm transition duration-150 hover:bg-zinc-200 active:scale-[0.99] disabled:opacity-40;
   }
   .glow-button-secondary {
-    @apply rounded-full bg-[#1F1F1F] border border-[#333333] text-white font-medium px-6 py-2 hover:bg-zinc-800 transition;
+    @apply rounded-lg bg-elev border border-line text-white font-medium px-4 py-2 text-sm hover:border-zinc-500 transition;
   }
   .glass-input {
-    @apply bg-black/40 border border-zinc-800 text-white rounded-xl px-4 py-3 outline-none focus:border-zinc-600 backdrop-blur-md transition placeholder:text-zinc-600 text-sm;
+    @apply bg-[#0D0D0D] border border-line text-white rounded-lg px-4 py-3 outline-none focus:border-zinc-400 transition placeholder:text-muted text-sm;
   }
+
+  /* Modal / popup */
+  .okx-backdrop {
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    animation: fade-in 0.18s ease-out both;
+  }
+  .okx-panel {
+    @apply bg-surface border border-line rounded-2xl shadow-panel;
+  }
+  .okx-pop { animation: okx-pop 0.22s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+  /* Tabs (OKX underline style) */
+  .okx-tab {
+    @apply px-1 pb-2.5 pt-1 text-sm font-medium text-sub hover:text-white transition border-b-2 border-transparent;
+  }
+  .okx-tab-active {
+    @apply text-white border-white;
+  }
+
+  /* Status chips */
+  .okx-chip { @apply px-2 py-0.5 rounded text-xs font-medium tabular-nums; }
+  .okx-chip-up { @apply bg-up/10 text-up; }
+  .okx-chip-down { @apply bg-down/10 text-down; }
+  .okx-chip-warn { @apply bg-warn/10 text-warn; }
+
+  /* Chart tooltip */
+  .okx-tooltip {
+    @apply pointer-events-none bg-elev border border-line rounded-lg px-3 py-1.5 text-xs whitespace-nowrap shadow-panel;
+  }
+
+  /* Dense table rows */
+  .okx-row { @apply hover:bg-white/[0.03] transition-colors; }
 
   /* Liquid glass — subtle (nav, badges, cards) */
   .liquid-glass {
@@ -140,6 +177,10 @@
 @keyframes pulse-ring {
   0%   { transform: scale(1);   opacity: 0.6; }
   100% { transform: scale(2.2); opacity: 0;   }
+}
+@keyframes okx-pop {
+  from { opacity: 0; transform: translateY(10px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);    }
 }
 
 .animate-fade-rise          { animation: fade-rise 0.8s ease-out both; }
