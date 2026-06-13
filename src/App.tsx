@@ -5,6 +5,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import DashboardLayout from './layouts/DashboardLayout';
 import Dashboard from './pages/Dashboard';
+import Analytics from './pages/Analytics';
 import Products from './pages/Products';
 import Webhooks from './pages/Webhooks';
 import Transactions from './pages/Transactions';
@@ -41,6 +42,7 @@ function App() {
         <Route element={<ProtectedRoute />}>
           <Route element={<DashboardLayout />}>
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/analytics" element={<Analytics />} />
             <Route path="/products" element={<Products />} />
             <Route path="/webhooks" element={<Webhooks />} />
             <Route path="/transactions" element={<Transactions />} />

@@ -10,7 +10,7 @@ const VIDEO_URL = 'https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIX
 const FONTS = `@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Syne:wght@400;500;600;700;800&display=swap');`;
 
 const PERKS = [
-  'No platform fees — ever',
+  '0.5% per transaction — waived during beta',
   'Solana USDC + Polygon USDT',
   'Funds go straight to your wallet',
   'Live in under 5 minutes',

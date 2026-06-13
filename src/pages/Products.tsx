@@ -17,6 +17,7 @@ interface Product {
 const Products = () => {
   const { user } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
+  const [revenueByProduct, setRevenueByProduct] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -33,18 +34,33 @@ const Products = () => {
   useEffect(() => {
     if (!user) return;
     const fetchProducts = async () => {
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .eq('merchant_id', user.id)
-        .order('created_at', { ascending: false });
-      if (error) {
-        console.error('products query failed:', error);
+      const [prodRes, txnRes] = await Promise.all([
+        supabase
+          .from('products')
+          .select('*')
+          .eq('merchant_id', user.id)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('transactions')
+          .select('product_id, amount_usd, status')
+          .eq('merchant_id', user.id)
+          .eq('status', 'confirmed')
+          .limit(2000),
+      ]);
+      if (prodRes.error) {
+        console.error('products query failed:', prodRes.error);
         toast.error('Could not load products. Try refreshing.');
         setLoading(false);
         return;
       }
-      setProducts(data ?? []);
+      // Revenue is decoration here — a failed query just hides the badges.
+      const rev = new Map<string, number>();
+      for (const t of txnRes.data ?? []) {
+        if (!t.product_id) continue;
+        rev.set(t.product_id, (rev.get(t.product_id) ?? 0) + (t.amount_usd ?? 0));
+      }
+      setRevenueByProduct(rev);
+      setProducts(prodRes.data ?? []);
       setLoading(false);
     };
     fetchProducts();
@@ -146,8 +162,15 @@ const Products = () => {
                 <p className="text-[13px] text-sub line-clamp-2 mb-3">{p.description}</p>
               )}
               <div className="mt-auto">
-                <div className="text-[22px] font-semibold tabular-nums text-white mb-0.5">
-                  ${p.price_usd.toFixed(2)}
+                <div className="flex items-baseline justify-between gap-2 mb-0.5">
+                  <div className="text-[22px] font-semibold tabular-nums text-white">
+                    ${p.price_usd.toFixed(2)}
+                  </div>
+                  {(revenueByProduct.get(p.id) ?? 0) > 0 && (
+                    <span className="okx-chip okx-chip-up" title="Lifetime settled revenue">
+                      +${revenueByProduct.get(p.id)!.toFixed(2)} earned
+                    </span>
+                  )}
                 </div>
                 <p className="text-[11px] text-muted mb-4">
                   Added {new Date(p.created_at).toLocaleDateString()}

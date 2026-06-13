@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   Home, Package, Activity, Settings as SettingsIcon, Link2,
-  LogOut, Menu, X, BookOpen,
+  LogOut, Menu, X, BookOpen, BarChart3,
 } from 'lucide-react';
 import { useAuth } from '../lib/auth';
 import { Logo, LogoMark } from '../components/Logo';
@@ -12,6 +12,7 @@ import { Logo, LogoMark } from '../components/Logo';
 
 const NAV = [
   { to: '/dashboard', icon: Home, label: 'Overview' },
+  { to: '/analytics', icon: BarChart3, label: 'Analytics' },
   { to: '/products', icon: Package, label: 'Products' },
   { to: '/transactions', icon: Activity, label: 'Transactions' },
   { to: '/webhooks', icon: Link2, label: 'Webhooks' },

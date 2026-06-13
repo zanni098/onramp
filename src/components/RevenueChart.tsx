@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react';
 
-// Dependency-free SVG revenue area chart (last 30 days, confirmed txns).
-// OKX-style: hairline grid, green line with soft gradient fill, crosshair
-// tooltip on hover, tabular numerals.
+// Dependency-free SVG revenue area chart. OKX-style: hairline grid, green
+// line with soft gradient fill, crosshair tooltip, tabular numerals.
+//
+// `days` selects the trailing window; `cumulative` plots a running total
+// instead of per-day revenue.
 
 interface Txn {
   created_at: string;
@@ -12,21 +14,33 @@ interface Txn {
 const W = 720;
 const H = 200;
 const PAD = { top: 14, right: 10, bottom: 26, left: 46 };
-const DAYS = 30;
 const GREEN = '#00C76F';
 
 function dayKey(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
 
-const RevenueChart = ({ transactions }: { transactions: Txn[] }) => {
+function fmtMoney(v: number): string {
+  if (v >= 1000) return `$${(v / 1000).toFixed(1)}k`;
+  return `$${v.toFixed(0)}`;
+}
+
+const RevenueChart = ({
+  transactions,
+  days = 30,
+  cumulative = false,
+}: {
+  transactions: Txn[];
+  days?: number;
+  cumulative?: boolean;
+}) => {
   const [hover, setHover] = useState<number | null>(null);
 
   const { points, max, labels } = useMemo(() => {
     const buckets = new Map<string, number>();
     const now = new Date();
     const keys: string[] = [];
-    for (let i = DAYS - 1; i >= 0; i--) {
+    for (let i = days - 1; i >= 0; i--) {
       const d = new Date(now);
       d.setDate(now.getDate() - i);
       const k = dayKey(d);
@@ -37,22 +51,27 @@ const RevenueChart = ({ transactions }: { transactions: Txn[] }) => {
       const k = t.created_at.slice(0, 10);
       if (buckets.has(k)) buckets.set(k, (buckets.get(k) ?? 0) + (t.amount_usd ?? 0));
     }
-    const vals = keys.map((k) => buckets.get(k) ?? 0);
+    let vals = keys.map((k) => buckets.get(k) ?? 0);
+    if (cumulative) {
+      let run = 0;
+      vals = vals.map((v) => (run += v));
+    }
     const mx = Math.max(...vals, 1);
     return {
       points: vals,
       max: mx,
       labels: keys.map((k) => k.slice(5).replace('-', '/')),
     };
-  }, [transactions]);
+  }, [transactions, days, cumulative]);
 
+  const n = points.length;
   const iw = W - PAD.left - PAD.right;
   const ih = H - PAD.top - PAD.bottom;
-  const x = (i: number) => PAD.left + (i / (DAYS - 1)) * iw;
+  const x = (i: number) => PAD.left + (i / (n - 1)) * iw;
   const y = (v: number) => PAD.top + ih - (v / max) * ih;
 
   const linePath = points.map((v, i) => `${i === 0 ? 'M' : 'L'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
-  const areaPath = `${linePath} L${x(DAYS - 1).toFixed(1)},${PAD.top + ih} L${x(0).toFixed(1)},${PAD.top + ih} Z`;
+  const areaPath = `${linePath} L${x(n - 1).toFixed(1)},${PAD.top + ih} L${x(0).toFixed(1)},${PAD.top + ih} Z`;
 
   const gridLines = [0, 0.5, 1].map((f) => PAD.top + ih - f * ih);
 
@@ -65,8 +84,8 @@ const RevenueChart = ({ transactions }: { transactions: Txn[] }) => {
         onMouseMove={(e) => {
           const rect = e.currentTarget.getBoundingClientRect();
           const px = ((e.clientX - rect.left) / rect.width) * W;
-          const i = Math.round(((px - PAD.left) / iw) * (DAYS - 1));
-          setHover(Math.min(DAYS - 1, Math.max(0, i)));
+          const i = Math.round(((px - PAD.left) / iw) * (n - 1));
+          setHover(Math.min(n - 1, Math.max(0, i)));
         }}
       >
         <defs>
@@ -81,11 +100,11 @@ const RevenueChart = ({ transactions }: { transactions: Txn[] }) => {
         ))}
 
         {/* y-axis labels */}
-        <text x={PAD.left - 8} y={y(max) + 4} textAnchor="end" fontSize="10" fill="#5E6673" fontFamily="Inter, sans-serif">${max >= 1000 ? `${(max / 1000).toFixed(1)}k` : max.toFixed(0)}</text>
+        <text x={PAD.left - 8} y={y(max) + 4} textAnchor="end" fontSize="10" fill="#5E6673" fontFamily="Inter, sans-serif">{fmtMoney(max)}</text>
         <text x={PAD.left - 8} y={PAD.top + ih + 4} textAnchor="end" fontSize="10" fill="#5E6673" fontFamily="Inter, sans-serif">$0</text>
         {/* x-axis labels */}
         <text x={x(0)} y={H - 8} textAnchor="start" fontSize="10" fill="#5E6673" fontFamily="Inter, sans-serif">{labels[0]}</text>
-        <text x={x(DAYS - 1)} y={H - 8} textAnchor="end" fontSize="10" fill="#5E6673" fontFamily="Inter, sans-serif">{labels[DAYS - 1]}</text>
+        <text x={x(n - 1)} y={H - 8} textAnchor="end" fontSize="10" fill="#5E6673" fontFamily="Inter, sans-serif">{labels[n - 1]}</text>
 
         <path d={areaPath} fill="url(#rev-fill)" />
         <path d={linePath} fill="none" stroke={GREEN} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
@@ -103,7 +122,7 @@ const RevenueChart = ({ transactions }: { transactions: Txn[] }) => {
           className="absolute -top-1 okx-tooltip"
           style={{
             left: `${(x(hover) / W) * 100}%`,
-            transform: `translateX(${hover > DAYS * 0.7 ? '-110%' : '10%'})`,
+            transform: `translateX(${hover > n * 0.7 ? '-110%' : '10%'})`,
           }}
         >
           <span className="text-sub">{labels[hover]}</span>
