@@ -18,7 +18,10 @@ supabase/
     │   ├── verify-solana.ts            # pure on-chain verifier (Solana)
     │   └── verify-polygon.ts           # pure on-chain verifier (Polygon)
     ├── create-checkout-session/        # POST: server creates a paid-order intent
-    └── verify-payment/                 # POST: drives the state machine
+    ├── verify-payment/                 # POST: drives the state machine
+    └── solana-rpc/                     # POST: method-whitelisted Solana RPC proxy
+                                        #       for the browser checkout (keeps the
+                                        #       Helius key server-side)
 ```
 
 ## Required Edge Function secrets
@@ -48,7 +51,13 @@ Or paste each `.sql` into the SQL editor in order.
 ```bash
 supabase functions deploy create-checkout-session
 supabase functions deploy verify-payment
+supabase functions deploy solana-rpc --no-verify-jwt
 ```
+
+`solana-rpc` must be deployed with `--no-verify-jwt`: the checkout runs as an
+anonymous customer and `@solana/web3.js` cannot attach Supabase auth headers.
+It only forwards a whitelist of read methods (`getLatestBlockhash`,
+`getAccountInfo`, `getVersion`) and is rate-limited per IP.
 
 ## State machine (canonical)
 

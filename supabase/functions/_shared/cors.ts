@@ -29,8 +29,10 @@ function dashboardOrigins(): Set<string> {
 }
 
 const COMMON_HEADERS = {
+  // 'solana-client' is sent by @solana/web3.js on every request — required
+  // for the solana-rpc proxy's preflight to pass.
   'Access-Control-Allow-Headers':
-    'authorization, x-client-info, apikey, content-type, idempotency-key',
+    'authorization, x-client-info, apikey, content-type, idempotency-key, solana-client',
   'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
   'Access-Control-Max-Age': '86400',
   Vary: 'Origin',

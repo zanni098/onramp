@@ -2,12 +2,31 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Loader, AlertCircle, Wallet, ExternalLink } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { Buffer } from 'buffer';
 import { supabase } from '../lib/supabase';
 import {
   createCheckoutSession,
   verifyPayment,
+  errorMessage,
   type CheckoutSession,
 } from '../lib/api';
+
+// Minimal typings for the injected wallet providers we talk to directly.
+interface PhantomProvider {
+  isPhantom?: boolean;
+  connect: () => Promise<{ publicKey: { toString(): string } }>;
+  signAndSendTransaction: (tx: unknown) => Promise<{ signature: string }>;
+}
+interface EthereumProvider {
+  request: (args: {
+    method: string;
+    params?: unknown[] | Record<string, unknown>;
+  }) => Promise<unknown>;
+}
+const getPhantom = () =>
+  (window as unknown as { solana?: PhantomProvider }).solana;
+const getEthereum = () =>
+  (window as unknown as { ethereum?: EthereumProvider }).ethereum;
 
 // ---------------------------------------------------------------------------
 // View model
@@ -110,7 +129,7 @@ const Checkout = () => {
   const connectPhantom = async () => {
     setStep('connecting');
     try {
-      const phantom = (window as any).solana;
+      const phantom = getPhantom();
       if (!phantom?.isPhantom) {
         toast.error('Phantom wallet not found. Install it from phantom.app');
         setStep('select');
@@ -128,13 +147,15 @@ const Checkout = () => {
   const connectMetaMask = async () => {
     setStep('connecting');
     try {
-      const eth = (window as any).ethereum;
+      const eth = getEthereum();
       if (!eth) {
         toast.error('MetaMask not found. Install it from metamask.io');
         setStep('select');
         return;
       }
-      const accounts = await eth.request({ method: 'eth_requestAccounts' });
+      const accounts = (await eth.request({
+        method: 'eth_requestAccounts',
+      })) as string[];
       setConnectedWallet(accounts[0]);
       // Also nudge to Polygon mainnet (chainId 0x89). Best-effort; ignore if user declines.
       try {
@@ -181,8 +202,8 @@ const Checkout = () => {
       });
       setSession(s);
       setStep('awaiting_payment');
-    } catch (err: any) {
-      toast.error(err?.message ?? 'Could not open checkout session');
+    } catch (err) {
+      toast.error(errorMessage(err, 'Could not open checkout session'));
       setStep('select');
     }
   };
@@ -201,14 +222,14 @@ const Checkout = () => {
       const hash =
         session.network === 'solana'
           ? await sendSolanaPayment(session, connectedWallet)
-          : await sendPolygonPayment(session, connectedWallet);
+          : await sendPolygonPayment(session);
 
       if (!hash) throw new Error('No transaction hash returned');
       setTxHash(hash);
       setStep('confirming');
       pollUntilTerminal(session.session_id, hash);
-    } catch (err: any) {
-      toast.error(err?.message ?? 'Transaction failed');
+    } catch (err) {
+      toast.error(errorMessage(err, 'Transaction failed'));
       setStep('awaiting_payment');
     }
   };
@@ -253,7 +274,6 @@ const Checkout = () => {
       } catch (err) {
         // Transient error: keep polling. Verifier endpoint already swallows
         // RPC outages and returns pending.
-        // eslint-disable-next-line no-console
         console.warn('verify-payment poll error', err);
       }
       await sleep(POLL_INTERVAL_MS);
@@ -476,7 +496,7 @@ async function sendSolanaPayment(
   session: CheckoutSession,
   payer: string,
 ): Promise<string> {
-  const phantom = (window as any).solana;
+  const phantom = getPhantom();
   if (!phantom) throw new Error('Phantom not available');
 
   const {
@@ -492,9 +512,14 @@ async function sendSolanaPayment(
     TOKEN_PROGRAM_ID,
   } = await import('@solana/spl-token');
 
-  const rpcUrl =
-    import.meta.env.VITE_HELIUS_API_KEY
-      ? `https://mainnet.helius-rpc.com/?api-key=${import.meta.env.VITE_HELIUS_API_KEY}`
+  // Prefer an explicit client-side Helius key if one is configured; otherwise
+  // go through our solana-rpc Edge Function proxy, which holds the server-side
+  // key and only allows the read methods this page needs. Public mainnet RPC
+  // is the last resort (e.g. running the frontend without any backend).
+  const rpcUrl = import.meta.env.VITE_HELIUS_API_KEY
+    ? `https://mainnet.helius-rpc.com/?api-key=${import.meta.env.VITE_HELIUS_API_KEY}`
+    : import.meta.env.VITE_SUPABASE_URL
+      ? `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/solana-rpc`
       : 'https://api.mainnet-beta.solana.com';
   const connection = new Connection(rpcUrl, 'confirmed');
 
@@ -540,7 +565,7 @@ async function sendSolanaPayment(
     new TransactionInstruction({
       keys: [],
       programId: MEMO_PROGRAM_ID,
-      data: new TextEncoder().encode(`onramp:${session.reference}`) as any,
+      data: Buffer.from(`onramp:${session.reference}`, 'utf8'),
     }),
   );
 
@@ -557,12 +582,11 @@ async function sendSolanaPayment(
 // Reference binding is the sub-cent suffix already encoded in amount_minor.
 // ---------------------------------------------------------------------------
 
-async function sendPolygonPayment(
-  session: CheckoutSession,
-  _payer: string,
-): Promise<string> {
+async function sendPolygonPayment(session: CheckoutSession): Promise<string> {
   const { ethers } = await import('ethers');
-  const provider = new ethers.BrowserProvider((window as any).ethereum);
+  const eth = getEthereum();
+  if (!eth) throw new Error('MetaMask not available');
+  const provider = new ethers.BrowserProvider(eth);
   const signer = await provider.getSigner();
 
   // Defensive chain check.

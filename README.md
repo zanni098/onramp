@@ -61,7 +61,7 @@ Nothing the browser says about price, destination, amount, or status is trusted.
 
 ### Backend
 
-- **Six Edge Functions** (`create-checkout-session`, `verify-payment`, `webhook-dispatcher`, `update-merchant-config`, `get-merchant-secrets`, `rotate-webhook-secret`).
+- **Seven Edge Functions** (`create-checkout-session`, `verify-payment`, `webhook-dispatcher`, `update-merchant-config`, `get-merchant-secrets`, `rotate-webhook-secret`, `solana-rpc`).
 - **State-machine DB** — `checkout_sessions.status ∈ {awaiting_payment, confirming, confirmed, failed, expired}` with a trigger that enforces legal transitions.
 - **`pg_cron`** fires the webhook dispatcher every 10 s for delivery + catch-up verification of stuck sessions.
 - **Token-bucket rate limiting** (atomic `rl_consume` RPC) applied per-IP, per-product, and per-session on customer endpoints.
@@ -197,7 +197,8 @@ onramp/
 │   │   ├── webhook-dispatcher/
 │   │   ├── update-merchant-config/
 │   │   ├── get-merchant-secrets/
-│   │   └── rotate-webhook-secret/
+│   │   ├── rotate-webhook-secret/
+│   │   └── solana-rpc/                  # method-whitelisted RPC proxy for checkout
 │   └── migrations/
 │       ├── 0002_checkout_sessions.sql   # state machine + RLS lockdown
 │       ├── 0003_webhook_deliveries.sql
@@ -280,7 +281,6 @@ Frontend deploys via Vercel's GitHub integration — every push to `main` builds
 Genuinely open items (the misleading "TODO" roadmap of the previous README covered things that are already shipped — those have been removed):
 
 - [ ] **Custom SMTP provider** (Resend / Postmark / SendGrid) — currently `mailer_autoconfirm = true` so the free Supabase shared sender's 2/hr cap doesn't block signups.
-- [ ] **Solana RPC proxy Edge Function** so the browser checkout can use Helius without baking the API key into the public JS bundle. Today the dedicated Helius key is server-side only; the browser falls back to the public `mainnet-beta` RPC for blockhash + ATA lookups.
 - [ ] **Sentry (or equivalent) error + cron monitoring** — right now a stopped cron goes undetected until webhook delivery visibly backs up.
 - [ ] **Hosted iframe / embed script** so merchants can drop a checkout widget into their site without the `/checkout/:id` redirect.
 - [ ] **Mobile wallet deep-links** (Phantom / MetaMask app) on the checkout page.
