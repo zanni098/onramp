@@ -22,17 +22,28 @@ const Products = () => {
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
 
-  const fetchProducts = async () => {
-    const { data } = await supabase
-      .from('products')
-      .select('*')
-      .eq('merchant_id', user!.id)
-      .order('created_at', { ascending: false });
-    setProducts(data ?? []);
-    setLoading(false);
-  };
+  // Bumped after a successful create to re-run the fetch effect.
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  useEffect(() => { if (user) fetchProducts(); }, [user]);
+  useEffect(() => {
+    if (!user) return;
+    const fetchProducts = async () => {
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .eq('merchant_id', user.id)
+        .order('created_at', { ascending: false });
+      if (error) {
+        console.error('products query failed:', error);
+        toast.error('Could not load products. Try refreshing.');
+        setLoading(false);
+        return;
+      }
+      setProducts(data ?? []);
+      setLoading(false);
+    };
+    fetchProducts();
+  }, [user, refreshKey]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,7 +69,7 @@ const Products = () => {
     if (error) return toast.error(error.message);
     toast.success('Product created');
     setName(''); setDescription(''); setPrice(''); setShowForm(false);
-    fetchProducts();
+    setRefreshKey(k => k + 1);
   };
 
   const handleDelete = async (id: string) => {

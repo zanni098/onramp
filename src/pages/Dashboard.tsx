@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { DollarSign, Package, Activity, TrendingUp, Loader } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 
@@ -14,17 +15,26 @@ interface Stats {
   activeCheckouts: number;
 }
 
+interface RecentTransaction {
+  id: string;
+  amount_usd: number | null;
+  status: 'confirmed' | 'failed';
+  network: string;
+  created_at: string;
+  product_id: string | null;
+}
+
 const Dashboard = () => {
   const { user, profile } = useAuth();
   const [stats, setStats] = useState<Stats | null>(null);
-  const [recentTxns, setRecentTxns] = useState<any[]>([]);
+  const [recentTxns, setRecentTxns] = useState<RecentTransaction[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!user) return;
 
     const fetchStats = async () => {
-      const [txnRes, productRes, activeRes] = await Promise.all([
+      const [txnRes, productRes, activeRes, recentRes] = await Promise.all([
         supabase.from('transactions').select('amount_usd, status').eq('merchant_id', user.id),
         supabase.from('products').select('id').eq('merchant_id', user.id),
         supabase
@@ -32,7 +42,22 @@ const Dashboard = () => {
           .select('id', { count: 'exact', head: true })
           .eq('merchant_id', user.id)
           .in('status', ['awaiting_payment', 'confirming']),
+        supabase
+          .from('transactions')
+          .select('id, amount_usd, status, network, created_at, product_id')
+          .eq('merchant_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(5),
       ]);
+
+      const firstError =
+        txnRes.error ?? productRes.error ?? activeRes.error ?? recentRes.error;
+      if (firstError) {
+        console.error('dashboard query failed:', firstError);
+        toast.error('Could not load dashboard data. Try refreshing.');
+        setLoading(false);
+        return;
+      }
 
       const txns = txnRes.data ?? [];
       const products = productRes.data ?? [];
@@ -44,14 +69,7 @@ const Dashboard = () => {
         totalProducts: products.length,
         activeCheckouts: activeRes.count ?? 0,
       });
-
-      const { data: recent } = await supabase
-        .from('transactions')
-        .select('id, amount_usd, status, network, created_at, product_id')
-        .eq('merchant_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(5);
-      setRecentTxns(recent ?? []);
+      setRecentTxns((recentRes.data ?? []) as RecentTransaction[]);
       setLoading(false);
     };
 
@@ -108,9 +126,9 @@ const Dashboard = () => {
                   <td className="py-3">${txn.amount_usd?.toFixed(2)}</td>
                   <td className="py-3 capitalize">{txn.network}</td>
                   <td className="py-3">
-                    <span className={`px-2 py-0.5 rounded-full text-xs ${txn.status === 'confirmed' ? 'bg-emerald-500/10 text-emerald-400' :
-                      txn.status === 'pending' ? 'bg-yellow-500/10 text-yellow-400' :
-                        'bg-red-500/10 text-red-400'
+                    <span className={`px-2 py-0.5 rounded-full text-xs ${txn.status === 'confirmed'
+                      ? 'bg-emerald-500/10 text-emerald-400'
+                      : 'bg-red-500/10 text-red-400'
                       }`}>{txn.status}</span>
                   </td>
                   <td className="py-3 text-zinc-500">{new Date(txn.created_at).toLocaleDateString()}</td>

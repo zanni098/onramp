@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Loader, ExternalLink } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 
@@ -17,28 +18,48 @@ interface Transaction {
 }
 
 const STATUS_FILTERS = ['all', 'confirmed', 'failed'];
+const PAGE_SIZE = 25;
 
 const Transactions = () => {
   const { user } = useAuth();
   const [txns, setTxns] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
 
   useEffect(() => {
     if (!user) return;
     const fetch = async () => {
+      const visible = (page + 1) * PAGE_SIZE;
       let query = supabase
         .from('transactions')
         .select('*')
         .eq('merchant_id', user.id)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        // Fetch one extra row past the visible window so we know whether a
+        // "Load more" is warranted without a second count query.
+        .range(0, visible);
       if (filter !== 'all') query = query.eq('status', filter);
-      const { data } = await query;
-      setTxns(data ?? []);
+      const { data, error } = await query;
+      if (error) {
+        console.error('transactions query failed:', error);
+        toast.error('Could not load transactions. Try refreshing.');
+        setLoading(false);
+        return;
+      }
+      const rows = data ?? [];
+      setHasMore(rows.length > visible);
+      setTxns(rows.slice(0, visible));
       setLoading(false);
     };
     fetch();
-  }, [user, filter]);
+  }, [user, filter, page]);
+
+  const changeFilter = (f: string) => {
+    setFilter(f);
+    setPage(0);
+  };
 
   const explorerLink = (txn: Transaction) => {
     if (!txn.tx_hash) return null;
@@ -55,7 +76,7 @@ const Transactions = () => {
         {STATUS_FILTERS.map(f => (
           <button
             key={f}
-            onClick={() => setFilter(f)}
+            onClick={() => changeFilter(f)}
             className={`px-4 py-1.5 rounded-full text-sm capitalize transition ${filter === f ? 'bg-accent text-white' : 'glow-button-secondary'
               }`}
           >
@@ -109,6 +130,16 @@ const Transactions = () => {
               ))}
             </tbody>
           </table>
+          {hasMore && (
+            <div className="border-t border-zinc-800 p-4 text-center">
+              <button
+                onClick={() => setPage(p => p + 1)}
+                className="glow-button-secondary text-sm"
+              >
+                Load more
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

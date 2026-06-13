@@ -1,25 +1,12 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
-import { Home, Package, Activity, Settings as SettingsIcon, Link2, LogOut, Loader } from 'lucide-react';
+import { Home, Package, Activity, Settings as SettingsIcon, Link2, LogOut } from 'lucide-react';
 import { useAuth } from '../lib/auth';
 
+// Auth is enforced by ProtectedRoute in App.tsx before this layout mounts.
 const DashboardLayout = () => {
-  const { user, profile, loading, signOut } = useAuth();
+  const { profile, signOut } = useAuth();
   const navigate = useNavigate();
-
-  useEffect(() => {
-    if (!loading && !user) navigate('/login');
-  }, [loading, user, navigate]);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader className="animate-spin text-accent" size={32} />
-      </div>
-    );
-  }
-
-  if (!user) return null;
 
   const handleSignOut = async () => {
     await signOut();
