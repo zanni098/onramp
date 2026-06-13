@@ -19,7 +19,7 @@
 
 <p align="center">
   Accept USDC on Solana and USDT on Polygon, settling directly into the merchant wallet.<br />
-  Zero platform fees · Zero custody · On-chain verified.
+  0.5% per transaction (waived during beta) · Zero custody · On-chain verified.
 </p>
 
 <p align="center">
@@ -35,7 +35,7 @@
 The platform is composed of three layers:
 
 1. **Browser SPA** (Vite + React 19) — marketing site, merchant dashboard, customer checkout.
-2. **Supabase backend** — Postgres with a state-machine schema, 10 migrations, Row-Level-Security lockdown, six Edge Functions (Deno), and `pg_cron` for scheduled jobs.
+2. **Supabase backend** — Postgres with a state-machine schema, 16 migrations, Row-Level-Security lockdown, eight Edge Functions (Deno), and `pg_cron` for scheduled jobs.
 3. **Chain layer** — Solana (SPL transfer + Memo-program binding) and Polygon (ERC-20 transfer with a sub-cent reference suffix).
 
 Nothing the browser says about price, destination, amount, or status is trusted. Every transition is either produced by the server or verified by the server.
@@ -61,7 +61,10 @@ Nothing the browser says about price, destination, amount, or status is trusted.
 
 ### Backend
 
-- **Seven Edge Functions** (`create-checkout-session`, `verify-payment`, `webhook-dispatcher`, `update-merchant-config`, `get-merchant-secrets`, `rotate-webhook-secret`, `solana-rpc`).
+- **Eight Edge Functions** (`create-checkout-session`, `verify-payment`, `webhook-dispatcher`, `update-merchant-config`, `get-merchant-secrets`, `rotate-webhook-secret`, `solana-rpc`, `v1` REST API).
+- **Public REST API v1** — API-key-authenticated endpoints for checkout sessions and transactions (`sk_live_…` / `sk_test_…`), with idempotency keys and per-merchant rate limits.
+- **Test mode** — `sk_test_` keys drive Solana devnet / Polygon Amoy verification so integrations can be exercised without real funds.
+- **Email receipts** — optional customer email on checkout; queued, retried, idempotent delivery after confirmation.
 - **State-machine DB** — `checkout_sessions.status ∈ {awaiting_payment, confirming, confirmed, failed, expired}` with a trigger that enforces legal transitions.
 - **`pg_cron`** fires the webhook dispatcher every 10 s for delivery + catch-up verification of stuck sessions.
 - **Token-bucket rate limiting** (atomic `rl_consume` RPC) applied per-IP, per-product, and per-session on customer endpoints.
@@ -147,11 +150,11 @@ Full Supabase security-advisor output is reviewed in [`supabase/README.md`](./su
 | Layer | Technology | Notes |
 |---|---|---|
 | **Frontend** | React 19, TypeScript 6, Vite 8 | `tsc -b --noEmit` clean |
-| **Styling** | Tailwind CSS 4, Inter + Instrument Serif | Dark-first; `.glow-card`, `.liquid-glass` utilities |
+| **Styling** | Tailwind CSS 3, Inter + Instrument Serif | OKX-inspired dark design system; `.glow-card`, `.okx-*`, `.liquid-glass` utilities |
 | **Icons** | Lucide React | |
 | **Routing** | React Router 7 | Nested routes under `DashboardLayout` |
-| **Auth & DB** | Supabase (Postgres 17) | 10 SQL migrations tracked in `supabase/migrations/` |
-| **Edge Functions** | Deno, hosted on Supabase | 6 functions in `supabase/functions/` |
+| **Auth & DB** | Supabase (Postgres 17) | 16 SQL migrations tracked in `supabase/migrations/` |
+| **Edge Functions** | Deno, hosted on Supabase | 8 functions in `supabase/functions/` |
 | **Cron** | `pg_cron` + `pg_net` | 10-second schedule for webhook dispatcher |
 | **Crypto** | `pgcrypto` | All secrets generated server-side via `gen_random_bytes` |
 | **Solana** | `@solana/web3.js` 1.98 + `@solana/spl-token` 0.4 | SPL transfer + Memo-program binding |
@@ -199,16 +202,13 @@ onramp/
 │   │   ├── get-merchant-secrets/
 │   │   ├── rotate-webhook-secret/
 │   │   └── solana-rpc/                  # method-whitelisted RPC proxy for checkout
-│   └── migrations/
+│   └── migrations/                      # 16 migrations, 0002 → 0017
 │       ├── 0002_checkout_sessions.sql   # state machine + RLS lockdown
-│       ├── 0003_webhook_deliveries.sql
-│       ├── 0004_webhook_cron.sql        # pg_cron schedule
-│       ├── 0005_ratelimit.sql           # rl_consume RPC
-│       ├── 0006_drop_profile_secrets.sql
-│       ├── 0007_signup_trigger.sql      # SECURITY DEFINER on auth.users
-│       ├── 0008_inline_cron_config.sql
-│       ├── 0009_fix_signup_trigger_search_path.sql
-│       └── 0010_security_hardening.sql  # REVOKE EXECUTE on RPCs, lock search_path
+│       ├── …                            # webhooks, cron, rate limits, signup
+│       │                                # trigger, security hardening, capability
+│       │                                # reads, idempotency keys, test mode
+│       ├── 0016_email_receipts.sql
+│       └── 0017_backfill_orphan_merchants.sql
 ├── .env.example
 ├── tailwind.config.js
 ├── vite.config.ts
@@ -235,8 +235,8 @@ Create `.env`:
 VITE_SUPABASE_URL=https://hkheayotxkyfgxjaoizj.supabase.co
 VITE_SUPABASE_ANON_KEY=<anon jwt from Supabase project>
 
-# Optional — used only by the Solana checkout path for blockhash lookup.
-# Falls back to https://api.mainnet-beta.solana.com (rate-limited).
+# Optional — client-side Solana RPC override. When unset, checkout routes
+# through the `solana-rpc` Edge Function proxy (server-side Helius key).
 VITE_HELIUS_API_KEY=
 ```
 
@@ -251,7 +251,7 @@ npm run lint
 
 If you're forking this and want your own Supabase project, see **[`supabase/README.md`](./supabase/README.md)** for:
 
-- Migration apply order (0002 → 0010).
+- Migration apply order (0002 → 0017).
 - Edge Function secrets: `HELIUS_API_KEY`, `ALCHEMY_API_KEY`, `DASHBOARD_ORIGINS`.
 - The auth-config settings that are NOT captured in migrations: `mailer_autoconfirm = true` for dev (flip to `false` + configure a real SMTP before taking real customers), `password_min_length = 10`, `password_required_characters = lower+upper+digit`.
 
@@ -287,7 +287,8 @@ Genuinely open items (the misleading "TODO" roadmap of the previous README cover
 - [ ] **Scrypt/argon2 hashing of `merchant_secrets.secret_key`** — currently plaintext-equivalent and only ever read through the auth-gated Edge Function, but should move to hashed compare once a public merchant API exists.
 - [ ] **HIBP leaked-password protection** — requires Supabase Pro plan.
 - [ ] **More stablecoins** (USDT on Solana, USDC on Polygon, DAI).
-- [ ] **Analytics charts** (revenue trends, conversion funnel).
+- [ ] **Platform fee collection** — pricing is announced at 0.5% per transaction, but collection is not yet enforced on-chain (a fee-split requires an extra transfer instruction on Solana and a splitter contract on Polygon). Until that ships, the fee is explicitly waived: merchants keep 100%, and every pricing surface says so.
+- [x] ~~Analytics charts~~ — 30-day revenue chart shipped on the Overview page.
 
 ---
 

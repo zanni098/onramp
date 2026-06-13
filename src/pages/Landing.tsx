@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Zap, Lock, Globe, Shield, CheckCircle, Menu, X } from 'lucide-react';
 import { useMobile } from '../hooks/useMobile';
+import { LogoMark } from '../components/Logo';
 
 const VIDEO_URL = 'https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260314_131748_f2ca2a28-fed7-44c8-b9a9-bd9acdd5ec31.mp4';
 const FONTS = `@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@300;400;500&display=swap');`;
@@ -18,7 +19,7 @@ const FEATURES = [
   { icon: <Lock size={20} />, title: 'Non-Custodial', body: 'Funds land directly in your wallet. We never hold, touch, or control your money.' },
   { icon: <Zap size={20} />, title: 'Instant Settlement', body: 'Blockchain finality in seconds. No 3–5 day bank holds, no chargebacks.' },
   { icon: <Globe size={20} />, title: 'No Borders', body: 'No LLC. No ITIN. No SSN. Accept payments from any country, any client.' },
-  { icon: <Shield size={20} />, title: 'Zero Hidden Fees', body: 'Pay only network gas. No monthly plans, no percentage cuts, no surprises.' },
+  { icon: <Shield size={20} />, title: 'One Transparent Fee', body: '0.5% per transaction — currently waived during beta. No monthly plans, no payout holds, no surprises.' },
 ];
 
 const STEPS = [
@@ -60,7 +61,7 @@ export default function Landing() {
             transition: 'background 0.3s',
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ width: 26, height: 26, borderRadius: '50%', background: 'linear-gradient(135deg,#0070F3,#7c3aed)', flexShrink: 0 }} />
+              <span style={{ color: '#fff', display: 'inline-flex', flexShrink: 0 }}><LogoMark size={24} /></span>
               <span style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.03em', color: '#fff' }}>onramp</span>
             </div>
             <div style={{ display: 'flex', gap: 32, alignItems: 'center' }}>
@@ -95,7 +96,7 @@ export default function Landing() {
             transition: 'background 0.3s',
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'linear-gradient(135deg,#0070F3,#7c3aed)' }} />
+              <span style={{ color: '#fff', display: 'inline-flex' }}><LogoMark size={22} /></span>
               <span style={{ fontSize: 17, fontWeight: 700, color: '#fff' }}>onramp</span>
             </div>
             <button onClick={() => setMenuOpen(v => !v)} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: 4 }}>
@@ -221,7 +222,7 @@ export default function Landing() {
             borderRadius: 20, animationDelay: '0.55s',
             width: isMobile ? '100%' : 'auto',
           }}>
-            {[['0%', 'Platform fees'], ['<3s', 'Settlement'], ['2', 'Networks'], ['∞', 'Countries']].map(([v, l]) => (
+            {[['0.5%', 'Per transaction'], ['<3s', 'Settlement'], ['2', 'Networks'], ['$0', 'Monthly fees']].map(([v, l]) => (
               <div key={l} style={{ textAlign: 'center' }}>
                 <div style={{ fontFamily: "'DM Mono', monospace", fontSize: isMobile ? 20 : 22, fontWeight: 500, color: '#fff', lineHeight: 1 }}>{v}</div>
                 <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 4, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{l}</div>
@@ -377,13 +378,24 @@ export default function Landing() {
       <section id="pricing" style={{ padding: isMobile ? '60px 20px 80px' : '80px 40px 100px', maxWidth: 1100, margin: '0 auto' }}>
         <div style={{ textAlign: 'center', marginBottom: isMobile ? 36 : 52 }}>
           <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: '#60a5fa', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 14 }}>Pricing</div>
-          <h2 style={{ fontFamily: "'Instrument Serif', serif", fontStyle: 'italic', fontSize: isMobile ? 32 : 'clamp(30px, 3.5vw, 52px)', fontWeight: 400, color: '#fff' }}>Simple. Honest. Free.</h2>
+          <h2 style={{ fontFamily: "'Instrument Serif', serif", fontStyle: 'italic', fontSize: isMobile ? 32 : 'clamp(30px, 3.5vw, 52px)', fontWeight: 400, color: '#fff' }}>Simple. Honest. Cheap.</h2>
         </div>
         <div style={{ maxWidth: 440, margin: '0 auto' }}>
           <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(0,112,243,0.3)', borderRadius: 24, padding: isMobile ? '36px 28px' : '48px', textAlign: 'center', boxShadow: '0 0 60px rgba(0,112,243,0.07)' }}>
-            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: '#60a5fa', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 14 }}>Free forever</div>
-            <div style={{ fontFamily: "'Instrument Serif', serif", fontStyle: 'italic', fontSize: 68, fontWeight: 400, color: '#fff', lineHeight: 1 }}>$0</div>
-            <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', marginBottom: 32, marginTop: 8 }}>No monthly fees. No percentage cut. Pay only network gas.</div>
+            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: '#60a5fa', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 14 }}>Pay as you get paid</div>
+            <div style={{ fontFamily: "'Instrument Serif', serif", fontStyle: 'italic', fontSize: 68, fontWeight: 400, color: '#fff', lineHeight: 1 }}>0.5%</div>
+            <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', marginTop: 8 }}>per successful transaction · plus network gas</div>
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: 8, margin: '14px 0 28px',
+              padding: '6px 14px', borderRadius: 9999,
+              background: 'rgba(74,222,128,0.08)', border: '1px solid rgba(74,222,128,0.25)',
+              fontSize: 12, color: '#4ade80', fontWeight: 600,
+            }}>
+              Beta: fee waived — you keep 100% today
+            </div>
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', marginBottom: 24 }}>
+              vs. 1% Coinbase Commerce · ~1% BitPay · 2.9% + 30¢ Stripe
+            </div>
             {['Unlimited products', 'Unlimited transactions', 'Solana USDC + Polygon USDT', 'Signed webhook notifications', 'Dashboard with transaction history'].map(f => (
               <div key={f} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, textAlign: 'left' }}>
                 <CheckCircle size={15} color="#4ade80" />
@@ -450,7 +462,7 @@ export default function Landing() {
         maxWidth: 1100, margin: '0 auto',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'linear-gradient(135deg, #0070F3, #7c3aed)' }} />
+          <span style={{ color: '#fff', display: 'inline-flex' }}><LogoMark size={18} /></span>
           <span style={{ fontWeight: 700, fontSize: 15, color: '#fff' }}>onramp</span>
         </div>
         <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: 'rgba(255,255,255,0.2)' }}>Non-custodial · No borders · Open source</span>
